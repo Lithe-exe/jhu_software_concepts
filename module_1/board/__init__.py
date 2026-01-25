@@ -1,5 +1,4 @@
 from flask import Flask
-
 from . import pages
 
 def create_app():
