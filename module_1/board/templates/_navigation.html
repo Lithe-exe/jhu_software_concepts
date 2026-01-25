@@ -1,10 +1,10 @@
 <nav>
   <ul class="nav-links">
   <li><a href="{{ url_for('pages.home') }}"
-         class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a></li>
+         class="{% if request.endpoint == 'pages.home' %}active{% endif %}">About</a></li>
 
   <li><a href="{{ url_for('pages.about') }}"
-         class="{% if request.endpoint == 'pages.about' %}active{% endif %}">About</a></li>
+         class="{% if request.endpoint == 'pages.about' %}active{% endif %}">Biotech</a></li>
 
   <li><a href="{{ url_for('pages.contact') }}"
          class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a></li>

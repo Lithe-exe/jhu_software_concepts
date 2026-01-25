@@ -6,9 +6,9 @@ bp = Blueprint("pages", __name__)
 def home():
     return render_template("pages/home.html")
 
-@bp.route("/about")
+@bp.route("/biotech")
 def about():
-    return render_template("pages/about.html")
+    return render_template("pages/biotech.html")
 
 @bp.route("/contact")
 def contact():
