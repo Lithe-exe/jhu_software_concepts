@@ -1,5 +1,5 @@
 from module_1.board import create_app
-
+#file to run the flask app
 app=create_app()
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

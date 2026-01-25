@@ -1,6 +1,6 @@
 from flask import Flask
 from . import pages
-
+# Function creates and configures the Flask app & is called in run.py
 def create_app():
     app = Flask(__name__)
 

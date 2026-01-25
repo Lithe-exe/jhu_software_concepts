@@ -18,7 +18,7 @@ main{
   display: flex;
   align-items:center;
 }
-
+/*Text contained within nav bar*/
 .nav-inner {
   width: 100%;
   margin: 0 auto;
@@ -58,10 +58,10 @@ main{
 .container {
   max-width: 1000px;
   margin: 24px auto;
-  padding: clamp(4px, 4vw, 8px);
+  padding: clamp(4px, 4vw, 8px); /*Allows consistent padding regardless of screen size*/
 }
 
-
+/* two column layout */
 .two-col {
   margin-top: 32px;
   display: flex;
