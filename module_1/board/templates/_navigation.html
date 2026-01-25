@@ -1,6 +1,16 @@
 <nav>
-  <ul>
-    <li><a href="{{ url_for('pages.home') }}">Home</a></li>
-    <li><a href="{{ url_for('pages.about') }}">About</a></li>
-  </ul>
+  <ul class="nav-links">
+  <li><a href="{{ url_for('pages.home') }}"
+         class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a></li>
+
+  <li><a href="{{ url_for('pages.about') }}"
+         class="{% if request.endpoint == 'pages.about' %}active{% endif %}">About</a></li>
+
+  <li><a href="{{ url_for('pages.contact') }}"
+         class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a></li>
+
+  <li><a href="{{ url_for('pages.projects') }}"
+         class="{% if request.endpoint == 'pages.projects' %}active{% endif %}">Projects</a></li>
+</ul>
+
 </nav>

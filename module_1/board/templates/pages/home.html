@@ -1,11 +1,21 @@
 {% extends 'base.html' %}
-
-{% block header %}
-  <h2>{% block title %}Sultan Jacobs(He/Him){% endblock title %}</h2>
-{% endblock header %}
-
+{% block title %}Home{% endblock title %}
 {% block content %}
-  <p>
-    Learn more about this project by visiting the <a href="{{ url_for('pages.about') }}">About page</a>.
-  </p>
+  <div class="two-col">
+        <div class="left-col">
+            
+            <h1>Sultan Jacobs(He/Him)</h1>
+            <h2>Student at Johns Hopkins University</h2>
+            <p>
+                Hello! My name is Sultan Jacobs, and I am a Masters student here at Johns Hopkins University studying Data Science with a focus in AI. 
+                My undergraduate degree is in Biomedical Science from Texas A&M University. I want to combine my background in health sciences with my passion for data science to work in drug discovery and therapeutics development. 
+            </p>
+        </div>
+
+        <div class="right-col">
+        <img src="{{ url_for('static', filename='images/Sultan.jpg') }}" alt="Sultan Jacobs" width="300">
+        </div>
+
+    </div>
+   
 {% endblock content %}
