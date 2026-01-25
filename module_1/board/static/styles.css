@@ -2,13 +2,15 @@
 * { box-sizing: border-box; }
 
 
-
 body {
   font-family: "Times New Roman";
   font-size: 18px;
   margin: 0;
 }
 
+main{
+    margin-left:6px;
+}
 /* top nav bar */
 .navbar {
   background: #2a59be;         /* blue bar */
@@ -18,9 +20,9 @@ body {
 }
 
 .nav-inner {
-  max-width: 1000px;
+  width: 100%;
   margin: 0 auto;
-  padding: 0 950px;
+  padding: 0 32px;
   display: flex;
   justify-content: flex-end;  
 }
@@ -33,7 +35,7 @@ body {
   gap: 0px;
 }
 
-.nav-links a {margin-left: auto;
+.nav-links a {
   color: white;
   padding: 0 12px;
   display: flex;
