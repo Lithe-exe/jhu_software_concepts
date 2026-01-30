@@ -1,4 +1,4 @@
-from module_1.board import create_app
+from board import create_app
 #file to run the flask app
 app=create_app()
 if __name__ == '__main__':
