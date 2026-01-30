@@ -1,0 +1,96 @@
+/* general */
+* { box-sizing: border-box; }
+
+
+body {
+  font-family: "Times New Roman";
+  font-size: 18px;
+  margin: 0;
+}
+
+main{
+    margin-left:6px;
+}
+/* top nav bar */
+.navbar {
+  background: #2a59be;         /* blue bar */
+  height: 44px;
+  display: flex;
+  align-items:center;
+}
+/*Text contained within nav bar*/
+.nav-inner {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  justify-content: flex-end;  
+}
+
+.nav-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 0px;
+}
+
+.nav-links a {
+  color: white;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  height: 44px;
+  font-weight: 600;
+}
+
+.nav-links a:hover {
+  text-decoration: underline;
+}
+
+.nav-links a.active {
+  color: #fefdff;            
+  background: rgba(59, 189, 228, 0.514);      
+}
+
+
+.container {
+  max-width: 1000px;
+  margin: 24px auto;
+  padding: clamp(4px, 4vw, 8px); /*Allows consistent padding regardless of screen size*/
+}
+
+/* two column layout */
+.two-col {
+  margin-top: 32px;
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.left-col {
+  padding-left: clamp(4px, 4vw, 8px);  
+}
+
+.right-col {
+  flex: 0 0 360px;     
+  background: none; 
+  padding: 0;
+}
+
+.profile-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* headings */
+h1 { margin: 0 0 8px 0; }
+h2 { margin: 0 0 14px 0; font-size: 18px; font-weight: 600; }
+
+.section-title {
+  margin-top: 40px;
+  font-size: 28px;
+  font-weight: 700;
+}
