@@ -9,6 +9,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
+
 
 class GradCafeScraper:
     BASE_URL = "https://www.thegradcafe.com/survey/index.php"
@@ -29,7 +31,7 @@ class GradCafeScraper:
         driver.maximize_window()
         return driver
 
-    def scrape_data(self, target_count=50):
+    def scrape_data(self, target_count=30001):
         print("--- STARTED ---")
         
         # Initial URL
@@ -39,8 +41,15 @@ class GradCafeScraper:
         try:
             while len(self.raw_data) < target_count:
                 print(f"Navigating to: {current_url}")
-                self.driver.get(current_url)
-                
+                try:
+                    self.driver.get(current_url)
+
+                except TimeoutException:
+                   print("Page load timeout. Stopping load and continuing.")
+                   self.driver.execute_script("window.stop();")
+                   time.sleep(2)
+                   continue
+           
                 # Wait for table rows to load
                 try:
                     WebDriverWait(self.driver, 10).until(
@@ -224,5 +233,5 @@ class GradCafeScraper:
 
 if __name__ == "__main__":
     scraper = GradCafeScraper()
-    scraper.scrape_data(target_count=10)
+    scraper.scrape_data(target_count=30001)
     scraper.save_raw_data()
