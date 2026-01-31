@@ -1,4 +1,3 @@
-import re
 import time
 import json
 import urllib.parse 
@@ -8,99 +7,152 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
-from selenium.common.exceptions import TimeoutException
-
 
 class GradCafeScraper:
+    # Based on the HTML you provided, the canonical link uses /survey/index.php
     BASE_URL = "https://www.thegradcafe.com/survey/index.php"
     
     def __init__(self, output_file="raw_applicant_data.json"):
         self.output_file = output_file
         self.raw_data = []
-        self.driver = self._setup_driver()
+        self.driver = None
+        
+        # --- 1. AUTO-RESUME LOGIC ---
+        # Try to load existing data to prevent starting over
+        try:
+            with open(self.output_file, 'r', encoding='utf-8') as f:
+                self.raw_data = json.load(f)
+            print(f"Loaded {len(self.raw_data)} existing entries. Resuming scrape...")
+        except FileNotFoundError:
+            print("No existing file found. Starting fresh.")
+            self.raw_data = []
+        except ValueError: # Handle corrupt JSON
+            self.raw_data = []
 
     def _setup_driver(self):
+        """Helper to create/recreate the driver"""
+        # If driver exists, try to close it cleanly first
+        if self.driver:
+            try:
+                self.driver.quit()
+            except:
+                pass
+                
         options = Options()
-        # options.add_argument("--headless") # Uncomment to run in background
+        # options.add_argument("--headless") # Keep commented to monitor progress
         options.add_argument("--disable-blink-features=AutomationControlled") 
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
+        
+        # Memory saving flags to prevent "Max retries exceeded"
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         
         driver = webdriver.Chrome(options=options)
         driver.maximize_window()
         return driver
 
     def scrape_data(self, target_count=30001):
-        print("--- STARTED ---")
-        
-        # Initial URL
-        params = {'q': '*', 't': 'a', 'o': '', 'p': 1}
-        current_url = f"{self.BASE_URL}?{urllib.parse.urlencode(params)}"
+        if not self.driver:
+            self.driver = self._setup_driver()
+            
+        # --- 2. CALCULATE START PAGE ---
+        # Your HTML shows about 25 entries per page.
+        # We calculate which page to jump to based on how much data we already have.
+        if len(self.raw_data) > 0:
+            # Integer division to find page
+            current_page = (len(self.raw_data) // 25) 
+            if current_page < 1: current_page = 1
+        else:
+            current_page = 1
+            
+        print(f"--- STARTING SCRAPE AT PAGE {current_page} ---")
         
         try:
             while len(self.raw_data) < target_count:
-                print(f"Navigating to: {current_url}")
-                try:
-                    self.driver.get(current_url)
-
-                except TimeoutException:
-                   print("Page load timeout. Stopping load and continuing.")
-                   self.driver.execute_script("window.stop();")
-                   time.sleep(2)
-                   continue
-           
-                # Wait for table rows to load
-                try:
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.TAG_NAME, "tr"))
-                    )
-                except:
-                    print("Timeout waiting for rows.")
-
-                time.sleep(3) # Fixed delay instead of random
+                # --- 3. ROBUST NAVIGATION ---
+                # Based on the HTML: <a href="/survey/?page=2">
+                # We construct the URL manually to "Jump" to the specific page.
+                # This fixes the issue of not being able to click "Next" if the page didn't load perfectly.
+                params = {'q': '*', 'page': current_page} 
+                target_url = f"{self.BASE_URL}?{urllib.parse.urlencode(params)}"
                 
+                # Retry Loop for Page Load (Handles your "Max retries" and "Timeout" errors)
+                success = False
+                attempts = 0
+                while not success and attempts < 3:
+                    try:
+                        self.driver.get(target_url)
+                        
+                        # Wait for the table rows (tr) to ensure data is present
+                        WebDriverWait(self.driver, 20).until(
+                            EC.presence_of_element_located((By.TAG_NAME, "tr"))
+                        )
+                        success = True
+                    except Exception as e:
+                        attempts += 1
+                        print(f"Error loading page {current_page} (Attempt {attempts}): {e}")
+                        
+                        # If we timed out or crashed, RESTART THE DRIVER
+                        print("♻️ Restarting Browser Driver to clear memory...")
+                        self.driver = self._setup_driver()
+                        time.sleep(5) # Give it a moment to settle
+                
+                if not success:
+                    print(f"Skipping page {current_page} due to persistent errors.")
+                    current_page += 1
+                    continue
+
+                # --- 4. DATA EXTRACTION ---
                 soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                 
-                # Extract data
-                new_entries = self._extract_data_from_soup(soup, current_url)
+                # Check for Cloudflare Block
+                if "Just a moment" in soup.get_text():
+                    print("⚠️ Cloudflare detected. Pausing 45 seconds...")
+                    time.sleep(45)
+                    # Don't increment page, try this one again
+                    continue
+
+                new_entries = self._extract_data_from_soup(soup, target_url)
                 
                 if not new_entries:
-                    print("No entries found on this page. Stopping.")
-                    break
-                
-                self.raw_data.extend(new_entries)
-                print(f"Collected {len(self.raw_data)} total entries.")
-                
-                if len(self.raw_data) >= target_count:
-                    break
-
-                # Pagination Logic
-                try:
-                    # Find the 'Next' button specifically using the text inside the pagination nav
-                    next_button = self.driver.find_element(By.XPATH, "//a[contains(., 'Next')]")
-                    next_url = next_button.get_attribute("href")
-                    
-                    if next_url and next_url != current_url:
-                        current_url = next_url
-                    else:
+                    print(f"No entries found on page {current_page}. (Might be end of results).")
+                    # We check if we are at page 1 (blocked) or deep (end of data)
+                    if current_page == 1:
                         break
-                except NoSuchElementException:
-                    print("No 'Next' button found. Finished.")
-                    break
+                    # If deep, maybe just a glitchy page, try next
+                    current_page += 1
+                    continue
 
+                self.raw_data.extend(new_entries)
+                print(f"Pg {current_page} | Collected: {len(new_entries)} | Total: {len(self.raw_data)}")
+                
+                current_page += 1
+                
+                # --- 5. SAFETY SAVE & CLEANUP ---
+                # Save every 5 pages so you don't lose 23k entries again
+                if current_page % 5 == 0:
+                    self.save_raw_data()
+                    
+                # Restart driver every 50 pages to free up RAM (Prevents HTTPConnectionPool error)
+                if current_page % 50 == 0:
+                    print("♻️ Periodic Driver Restart (Maintenance)...")
+                    self.driver = self._setup_driver()
+                
+                time.sleep(2) # Politeness delay
+
+        except KeyboardInterrupt:
+            print("Scraping stopped by user.")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Critical Error: {e}")
         finally:
             self._teardown()
+            
         return self.raw_data[:target_count]
 
     def _extract_data_from_soup(self, soup, url):
         """
-        Parses the HTML table handling multi-row entries.
-        Row 1: Main Info (School, Prog, Decision)
-        Row 2 (Optional): Badges (GPA, GRE, Season, Status)
-        Row 3 (Optional): Comments (Text)
+        Extracts data using the structure from the HTML provided.
         """
         entries = []
         rows = soup.find_all('tr')
@@ -108,128 +160,75 @@ class GradCafeScraper:
         current_entry = None
 
         for row in rows:
-            # Check if this is a "Main Data" row (it has the School column)
             cells = row.find_all('td')
             
+            # --- Identify Main Row ---
+            # Based on your HTML, the main row has the University name in a div with font-medium
             is_main_row = False
             if len(cells) >= 2:
-                # Check for School Name container
-                if row.find('div', class_='tw-font-medium tw-text-gray-900 tw-text-sm'):
+                if row.find('div', class_=lambda x: x and 'font-medium' in x):
                     is_main_row = True
 
             if is_main_row:
-                # If we were building an entry, save it before starting a new one
                 if current_entry:
                     entries.append(current_entry)
 
-                # --- Extract Main Row Data ---
-                school_cell = cells[0].get_text(strip=True)
-                program_degree_cell = cells[1]
+                # Extract University
+                school = cells[0].get_text(strip=True)
                 
-                # Split Program and Degree
-                prog_text = ""
-                degree_text = "Other" 
+                # Extract Program & Degree (Col 2)
+                # Structure: <div><span>Program</span> <svg> <span>Degree</span></div>
+                prog_block = cells[1]
+                spans = prog_block.find_all('span')
                 
-                spans = program_degree_cell.find_all('span')
-                if len(spans) >= 1:
-                    prog_text = spans[0].get_text(strip=True)
-                if len(spans) >= 2:
-                    degree_text = spans[-1].get_text(strip=True)
+                prog_text = spans[0].get_text(strip=True) if len(spans) > 0 else ""
+                degree_text = spans[-1].get_text(strip=True) if len(spans) > 1 else "Other"
 
-                decision_cell_text = ""
-                date_added = ""
+                # Extract Full Row Text for regex processing later (Status, Date, etc)
+                # This ensures we capture "Accepted on 30 Jan" even if classes change
+                full_row_text = row.get_text(" ", strip=True)
                 
-                # Loop to find the decision badge specifically
-                for cell in cells:
-                    badge = cell.find('div', class_=lambda x: x and 'ring-inset' in x)
-                    if badge:
-                        decision_cell_text = badge.get_text(strip=True)
-                    elif "202" in cell.get_text(): 
-                         date_added = cell.get_text(strip=True)
-
-                # Parse Status
-                status = "Other"
-                if "Accepted" in decision_cell_text:
-                    status = "Accepted"
-                elif "Rejected" in decision_cell_text:
-                    status = "Rejected"
-                elif "Wait listed" in decision_cell_text:
-                    status = "Waitlisted"
-                elif "Interview" in decision_cell_text:
-                    status = "Interview"
-                
-                # Initialize Object
                 current_entry = {
-                    "University": school_cell,
-                    "Program Name": prog_text,
-                    "Masters or PhD": degree_text,
-                    "Applicant Status": status,
-                    "Date of Information Added": date_added,
-                    "Decision Details": decision_cell_text,
-                    "Season": None,
-                    "International / American Student": None,
-                    "GPA": None,
-                    "GRE Score": None,
-                    "GRE V Score": None,
-                    "GRE AW": None,
-                    "Comments": None,
-                    "URL link": url
+                    "raw_inst": school,
+                    "raw_prog": prog_text,
+                    "raw_degree": degree_text,
+                    "raw_text": full_row_text, 
+                    "raw_comments": "",
+                    "url": url
                 }
-
-            # If it's NOT a main row, it might be stats or comments
+            
             elif current_entry:
-                # Check for Comments
+                # --- Identify Detail Rows ---
+                # Row with Stats badges (GPA, GRE, Season)
+                # Row with Comments (<p> tags)
+                
+                # Comments often in a <p> tag in a cell spanning multiple columns
                 comment_p = row.find('p')
                 if comment_p:
-                    current_entry["Comments"] = comment_p.get_text(strip=True)
-                    continue 
-
-                # Check for Stats (Badges)
-                badges = row.find_all('div', class_=lambda x: x and ('rounded-md' in x or 'ring-inset' in x))
+                    current_entry["raw_comments"] += " " + comment_p.get_text(strip=True)
                 
-                for badge in badges:
-                    txt = badge.get_text(strip=True)
-                    
-                    if re.search(r'(Fall|Spring|Summer)\s*20\d{2}', txt):
-                        current_entry["Season"] = txt
-                    
-                    elif txt in ["International", "American"]:
-                        current_entry["International / American Student"] = txt
-                        
-                    elif "GPA" in txt:
-                        match = re.search(r'GPA\s*([\d\.]+)', txt)
-                        if match:
-                            current_entry["GPA"] = match.group(1)
-                            
-                    elif "GRE" in txt and "V" not in txt and "AW" not in txt:
-                        match = re.search(r'GRE\s*(\d+)', txt)
-                        if match:
-                            current_entry["GRE Score"] = match.group(1)
+                # Stats are usually in the raw text of these detail rows too
+                current_entry["raw_text"] += " " + row.get_text(" ", strip=True)
 
-                    elif "GRE V" in txt:
-                        match = re.search(r'GRE V\s*(\d+)', txt)
-                        if match:
-                            current_entry["GRE V Score"] = match.group(1)
-
-                    elif "GRE AW" in txt:
-                        match = re.search(r'GRE AW\s*([\d\.]+)', txt)
-                        if match:
-                            current_entry["GRE AW"] = match.group(1)
-
-        # Append the very last entry
         if current_entry:
             entries.append(current_entry)
             
         return entries
 
     def save_raw_data(self):
-        with open(self.output_file, 'w', encoding='utf-8') as f:
-            json.dump(self.raw_data, f, indent=4)
-        print(f"Data saved to {self.output_file}")
+        try:
+            with open(self.output_file, 'w', encoding='utf-8') as f:
+                json.dump(self.raw_data, f, indent=4)
+            print(f"Saved {len(self.raw_data)} entries.")
+        except Exception as e:
+            print(f"Error saving: {e}")
 
     def _teardown(self):
         if self.driver:
-            self.driver.quit()
+            try:
+                self.driver.quit()
+            except:
+                pass
 
 if __name__ == "__main__":
     scraper = GradCafeScraper()
