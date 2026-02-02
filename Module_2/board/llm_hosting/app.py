@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Flask + tiny local LLM standardizer with incremental JSONL CLI output."""
+"""Flask + tiny local LLM standardizer with incremental JSON CLI output."""
 
 from __future__ import annotations
 
@@ -274,7 +274,13 @@ def standardize() -> Any:
 
     out: List[Dict[str, Any]] = []
     for row in rows:
-        program_text = (row or {}).get("program") or ""
+        # Handle applicant_data.json specific keys
+        program_text = (row or {}).get("program")
+        if not program_text:
+            p_val = (row or {}).get("Program Name", "")
+            u_val = (row or {}).get("University", "")
+            program_text = f"{p_val}, {u_val}"
+
         result = _call_llm(program_text)
         row["llm-generated-program"] = result["standardized_program"]
         row["llm-generated-university"] = result["standardized_university"]
@@ -289,28 +295,49 @@ def _cli_process_file(
     append: bool,
     to_stdout: bool,
 ) -> None:
-    """Process a JSON file and write JSONL incrementally."""
+    """Process a JSON file and write Pretty-Printed JSON array."""
     with open(in_path, "r", encoding="utf-8") as f:
         rows = _normalize_input(json.load(f))
 
     sink = sys.stdout if to_stdout else None
     if not to_stdout:
-        out_path = out_path or (in_path + ".jsonl")
-        mode = "a" if append else "w"
+        out_path = out_path or (in_path + "_standardized.json")
+        mode = "w" # We overwrite for a standard JSON array to keep valid syntax
         sink = open(out_path, mode, encoding="utf-8")
 
     assert sink is not None  # for type-checkers
 
     try:
-        for row in rows:
-            program_text = (row or {}).get("program") or ""
+        # Start the JSON array
+        sink.write("[\n")
+        
+        total_rows = len(rows)
+        for i, row in enumerate(rows):
+            # Handle applicant_data.json specific keys
+            program_text = (row or {}).get("program")
+            if not program_text:
+                p_val = (row or {}).get("Program Name", "")
+                u_val = (row or {}).get("University", "")
+                program_text = f"{p_val}, {u_val}"
+
             result = _call_llm(program_text)
             row["llm-generated-program"] = result["standardized_program"]
             row["llm-generated-university"] = result["standardized_university"]
 
-            json.dump(row, sink, ensure_ascii=False)
-            sink.write("\n")
+            # Dump with indentation to create vertical/pretty output
+            json.dump(row, sink, ensure_ascii=False, indent=4)
+            
+            # Add a comma if it's not the last item
+            if i < total_rows - 1:
+                sink.write(",\n")
+            else:
+                sink.write("\n")
+                
             sink.flush()
+            
+        # End the JSON array
+        sink.write("]\n")
+        
     finally:
         if sink is not sys.stdout:
             sink.close()
@@ -335,18 +362,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out",
         default=None,
-        help="Output path for JSON Lines (ndjson). "
-        "Defaults to <input>.jsonl when --file is set.",
+        help="Output path. Defaults to <input>_standardized.json",
     )
     parser.add_argument(
         "--append",
         action="store_true",
-        help="Append to the output file instead of overwriting.",
+        help="Append (NOTE: Disabled for pretty-printed JSON output to maintain array validity).",
     )
     parser.add_argument(
         "--stdout",
         action="store_true",
-        help="Write JSON Lines to stdout instead of a file.",
+        help="Write JSON to stdout instead of a file.",
     )
     args = parser.parse_args()
 

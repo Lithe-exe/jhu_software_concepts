@@ -1,7 +1,6 @@
 import json
 import re
 
-
 class DataCleaner:
     def __init__(self, input_file="raw_applicant_data.json", output_file="applicant_data.json"):
         self.input_file = input_file
@@ -120,10 +119,7 @@ class DataCleaner:
         return s
     # stops null/empty strings except for comments from being in cleaned data
     def _prune_nulls(self, obj):
-        """
-        Removes keys whose values are None or empty strings,
-        EXCEPT always keeps 'Comments' (as "").
-        """
+       
         pruned = {}
 
         for k, v in obj.items():

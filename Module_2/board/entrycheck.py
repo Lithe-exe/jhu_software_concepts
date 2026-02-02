@@ -1,4 +1,5 @@
 import json
+#checks the number of entries in both raw and cleaned data files before llm processing
 def check_data_counts():
     with open("applicant_data.json", "r", encoding="utf-8") as f:
         data = json.load(f)

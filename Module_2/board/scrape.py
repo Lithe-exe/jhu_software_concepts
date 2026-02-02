@@ -93,9 +93,7 @@ class GradCafeScraper:
             return None
     # Scrapes data until target count is met or too many empty pages encountered. Resumes from existing data if target count is not met prior to stopping.
     def scrape_data(self, target_count=50000, save_every_pages=8, max_empty_pages=10):
-        """
-        Scrape until target_count or until we hit too many consecutive empty pages.
-        """
+       
         # Determine starting page. Each page has ~20 entries when I counted 01/28/25.
         if len(self.raw_data) > 0:
             current_page = max(1, (len(self.raw_data) // 20) + 1)
