@@ -9,11 +9,8 @@ class DataCleaner:
         self.cleaned_data = []
 
     def load_data(self, data=None):
-        """
-        Loads data.
-        If 'data' is passed (from main.py memory), use it.
-        Otherwise, load from the raw JSON file on disk.
-        """
+       
+        # Uses in memory data if provided. Meant to handle cases where a previous run failed after scraping so it can continue.
         if data:
             print(f"Received {len(data)} entries from memory.")
             return data
@@ -53,7 +50,7 @@ class DataCleaner:
                 if raw_date:
                     formatted_date = self._manual_format_date(raw_date)
 
-            # 3. Build object (full schema)
+            # 3. Build object. Start with direct mappings and cleaned strings.
             obj = {
                 "Program Name": self._clean_str(item.get("raw_prog") or item.get("Program Name")),
                 "University": self._clean_str(item.get("raw_inst") or item.get("University")),
@@ -104,7 +101,7 @@ class DataCleaner:
             self.cleaned_data.append(obj)
 
         return self.cleaned_data
-
+    # Saves cleaned data to output file
     def save_data(self):
         with open(self.output_file, 'w', encoding='utf-8') as f:
             json.dump(self.cleaned_data, f, indent=4)
@@ -113,11 +110,7 @@ class DataCleaner:
     # ---------- Helpers ----------
 
     def _clean_str(self, s, keep_empty=False):
-        """
-        Normalizes strings by collapsing whitespace.
-        - If keep_empty=True: returns "" when s is None/empty
-        - Else: returns None when s is None/empty
-        """
+       # Formats strings by stripping extra whitespace & handling nulls
         if s is None:
             return "" if keep_empty else None
 
@@ -125,7 +118,7 @@ class DataCleaner:
         if s == "":
             return "" if keep_empty else None
         return s
-
+    # stops null/empty strings except for comments from being in cleaned data
     def _prune_nulls(self, obj):
         """
         Removes keys whose values are None or empty strings,
@@ -147,7 +140,7 @@ class DataCleaner:
 
         pruned.setdefault("Comments", "")
         return pruned
-
+    # Parses status and date from text blobs
     def _parse_status_date(self, text):
         t = str(text).lower()
         status = "Other"
@@ -169,7 +162,7 @@ class DataCleaner:
             return status, f"{match2.group(2)} {match2.group(1)}"
 
         return status, None
-
+    # Handles various date formats manually
     def _manual_format_date(self, d_str):
         if not d_str:
             return None
@@ -178,7 +171,7 @@ class DataCleaner:
 
         year_match = re.search(r'\d{4}', d_str)
         year = year_match.group(0) if year_match else "2026"
-
+        
         month_map = {
             "january": "Jan", "february": "Feb", "march": "Mar", "april": "Apr",
             "may": "May", "june": "Jun", "july": "Jul", "august": "Aug",
@@ -202,7 +195,7 @@ class DataCleaner:
 
         day = day_match.group(0)
         return f"{day} {month} {year}"
-
+    # Extracts the semester 
     def _extract_season(self, text):
         match = re.search(r'(Fall|Spring|Summer|Winter)\s+\d{4}', text, re.IGNORECASE)
         return match.group(0) if match else None
