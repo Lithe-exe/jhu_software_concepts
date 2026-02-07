@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grad School Cafe Data Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Grad School Cafe Data Analysis</h1>
+        
+        <!-- Controls for Part B -->
+        <div class="controls">
+            <form action="/pull-data" method="POST">
+                <button class="btn btn-blue" {% if is_scraping %}disabled{% endif %}>
+                    Pull Data
+                </button>
+            </form>
+            <form action="/update-analysis" method="POST">
+                <button class="btn btn-green" {% if is_scraping %}disabled{% endif %}>
+                    Update Analysis
+                </button>
+            </form>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="analysis-box">
+            <div class="item">
+                <p class="question">How many entries do you have in your database who have applied for Fall 2026?</p>
+                <p class="answer">Answer: {{ data.get('q1', 'N/A') }}</p>
+            </div>
+            
+            <div class="item">
+                <p class="question">What percentage of entries are from international students?</p>
+                <p class="answer">Answer: {{ data.get('q2', 'N/A') }}%</p>
+            </div>
+
+            <div class="item">
+                <p class="question">Average GPA, GRE, GRE V, GRE AW?</p>
+                <p class="answer">Answer: {{ data.get('q3', 'N/A') }}</p>
+            </div>
+
+            <div class="item">
+                <p class="question">Average GPA of American students in Fall 2026?</p>
+                <p class="answer">Answer: {{ data.get('q4', 'N/A') }}</p>
+            </div>
+
+            <div class="item">
+                <p class="question">Percent of entries for Fall 2026 that are Acceptances?</p>
+                <p class="answer">Answer: {{ data.get('q5', 'N/A') }}%</p>
+            </div>
+
+            <div class="item">
+                <p class="question">Average GPA of Fall 2026 Acceptances?</p>
+                <p class="answer">Answer: {{ data.get('q6', 'N/A') }}</p>
+            </div>
+
+            <div class="item">
+                <p class="question">JHU Masters CS Applicants?</p>
+                <p class="answer">Answer: {{ data.get('q7', 'N/A') }}</p>
+            </div>
+
+            <div class="item">
+                <p class="question">PhD CS Acceptances (Georgetown, MIT, Stanford, CMU) - Raw Fields?</p>
+                <p class="answer">Answer: {{ data.get('q8', 'N/A') }}</p>
+            </div>
+
+            <div class="item">
+                <p class="question">PhD CS Acceptances (Georgetown, MIT, Stanford, CMU) - LLM Fields?</p>
+                <p class="answer">Answer: {{ data.get('q9', 'N/A') }}</p>
+            </div>
+            
+            <hr>
+            
+            <div class="item">
+                <p class="question">Custom: Average GRE by Degree Type?</p>
+                <p class="answer">Answer: {{ data.get('cq1', 'N/A') }}</p>
+            </div>
+            
+            <div class="item">
+                <p class="question">Custom: Most Active Submission Date?</p>
+                <p class="answer">Answer: {{ data.get('cq2', 'N/A') }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
