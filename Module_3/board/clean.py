@@ -13,11 +13,7 @@ class DataCleaner:
         self.cleaned_data = []
 
     def update_and_merge(self):
-        """
-        Loads existing data, loads new raw data, cleans the new data,
-        merges them (preventing duplicates), and saves the result.
-        """
-        # 1. Load Existing Data
+        # 1. Load Existing Data, stops dupes & merges new with old, keeping newest on top
         existing_data = []
         try:
             with open(self.output_file, 'r', encoding='utf-8') as f:
@@ -27,7 +23,7 @@ class DataCleaner:
             print(f"No existing {self.output_file} found or file empty. Starting fresh.")
             existing_data = []
 
-        # 2. Load New Raw Data
+        # 2. Load New Raw Data, stops dupes & merges new with old, keeping newest on top
         raw_data = []
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
@@ -37,30 +33,38 @@ class DataCleaner:
             print(f"File {self.input_file} not found or empty. Aborting update.")
             return
 
-        # 3. Clean the New Raw Data
-        # We process the raw list into a clean list
+        # 3. Clean the New Raw Data; process the raw list into a clean list
         new_cleaned_entries = self.clean_data(raw_data)
 
         # 4. Merge (Deduplication)
-        # We build a set of signatures from the EXISTING data to ensure we don't add duplicates.
-        # Signature: (University, Program Name, Date, Comments)
+        # Build a set of signatures from the EXISTING data to ensure we don't add duplicates.
+        def _norm(s):
+            if s is None:
+                return ""
+            return " ".join(str(s).strip().lower().split())
+
+        def _get_date(entry):
+            return (entry.get("Date of Information Added to Grad Café") or
+                    entry.get("Date of Information Added to Grad CafÃ©") or
+                    entry.get("Date of Information Added to Grad CafÃƒÂ©"))
+
         existing_sigs = set()
         for entry in existing_data:
             sig = (
-                entry.get("University"),
-                entry.get("Program Name"),
-                entry.get("Date of Information Added to Grad Café"),
-                entry.get("Comments")
+                _norm(entry.get("University")),
+                _norm(entry.get("Program Name")),
+                _norm(_get_date(entry)),
+                _norm(entry.get("Comments"))
             )
             existing_sigs.add(sig)
 
         unique_new_entries = []
         for item in new_cleaned_entries:
             sig = (
-                item.get("University"),
-                item.get("Program Name"),
-                item.get("Date of Information Added to Grad Café"),
-                item.get("Comments")
+                _norm(item.get("University")),
+                _norm(item.get("Program Name")),
+                _norm(_get_date(item)),
+                _norm(item.get("Comments"))
             )
             
             # If we haven't seen this entry in the existing file, add it

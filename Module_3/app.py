@@ -37,9 +37,9 @@ def pull_data():
         cleaner = DataCleaner(input_file=raw_file, output_file=final_file)
         cleaner.update_and_merge()
 
-        # 3. LOAD MERGED DATA
+        # 3. LOAD MERGED DATA (reset to mirror JSON exactly)
         print("3. Loading to Database...")
-        board.load_data.load_data(final_file, reset=False)
+        board.load_data.load_data(final_file, reset=True)
 
         flash("Success! Data scraped, cleaned, and loaded.")
 
