@@ -7,26 +7,74 @@ class DataCleaner:
         self.output_file = output_file
         self.cleaned_data = []
 
-    def load_data(self, data=None):
-       
-        # Uses in memory data if provided. Meant to handle cases where a previous run failed after scraping so it can continue.
-        if data:
-            print(f"Received {len(data)} entries from memory.")
-            return data
+    def update_and_merge(self):
+        """
+        Loads existing data, loads new raw data, cleans the new data,
+        merges them (preventing duplicates), and saves the result.
+        """
+        # 1. Load Existing Data
+        existing_data = []
+        try:
+            with open(self.output_file, 'r', encoding='utf-8') as f:
+                existing_data = json.load(f)
+                print(f"Loaded {len(existing_data)} existing entries from {self.output_file}.")
+        except (FileNotFoundError, ValueError):
+            print(f"No existing {self.output_file} found or file empty. Starting fresh.")
+            existing_data = []
 
+        # 2. Load New Raw Data
+        raw_data = []
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
-                content = json.load(f)
-                print(f"Loaded {len(content)} entries from {self.input_file}.")
-                return content
+                raw_data = json.load(f)
+                print(f"Loaded {len(raw_data)} raw entries from {self.input_file}.")
         except (FileNotFoundError, ValueError):
-            print(f"File {self.input_file} not found or empty.")
-            return []
+            print(f"File {self.input_file} not found or empty. Aborting update.")
+            return
+
+        # 3. Clean the New Raw Data
+        # We process the raw list into a clean list
+        new_cleaned_entries = self.clean_data(raw_data)
+
+        # 4. Merge (Deduplication)
+        # We build a set of signatures from the EXISTING data to ensure we don't add duplicates.
+        # Signature: (University, Program Name, Date, Comments)
+        existing_sigs = set()
+        for entry in existing_data:
+            sig = (
+                entry.get("University"),
+                entry.get("Program Name"),
+                entry.get("Date of Information Added to Grad Café"),
+                entry.get("Comments")
+            )
+            existing_sigs.add(sig)
+
+        unique_new_entries = []
+        for item in new_cleaned_entries:
+            sig = (
+                item.get("University"),
+                item.get("Program Name"),
+                item.get("Date of Information Added to Grad Café"),
+                item.get("Comments")
+            )
+            
+            # If we haven't seen this entry in the existing file, add it
+            if sig not in existing_sigs:
+                unique_new_entries.append(item)
+                existing_sigs.add(sig) # Prevent duplicates within the new batch itself
+
+        print(f"Found {len(unique_new_entries)} new unique entries to add.")
+
+        # 5. Combine: Newest on top, followed by existing history
+        self.cleaned_data = unique_new_entries + existing_data
+        
+        # 6. Save
+        self.save_data()
 
     def clean_data(self, raw_data):
-        self.cleaned_data = []
-        print(f"Cleaning {len(raw_data)} entries...")
-
+        # Local list to hold newly cleaned items
+        cleaned_batch = []
+        
         for item in raw_data:
             # 1. Consolidate text for regex analysis
             raw_text_blob = (
@@ -45,7 +93,12 @@ class DataCleaner:
                 formatted_date = self._manual_format_date(decision_date_str)
 
             if not formatted_date:
-                raw_date = item.get("Date of Information Added") or item.get("raw_date_added")
+                # Check scraper's raw_date, then old keys
+                raw_date = (
+                    item.get("raw_date") or 
+                    item.get("Date of Information Added") or 
+                    item.get("raw_date_added")
+                )
                 if raw_date:
                     formatted_date = self._manual_format_date(raw_date)
 
@@ -72,7 +125,10 @@ class DataCleaner:
                 "GRE V Score": item.get("GRE V Score"),
                 "GRE AW": item.get("GRE AW"),
                 "Masters or PhD": self._clean_str(item.get("raw_degree") or item.get("Masters or PhD")),
-                "GPA": item.get("GPA")
+                "GPA": item.get("GPA"),
+                # Preserve LLM fields if they happen to exist in raw (rare, but good practice)
+                "llm_generated_program": item.get("llm_generated_program"),
+                "llm_generated_university": item.get("llm_generated_university")
             }
 
             # 4. Conditional fields
@@ -97,14 +153,18 @@ class DataCleaner:
             # 6. Remove null/empty values, but always keep Comments
             obj = self._prune_nulls(obj)
 
-            self.cleaned_data.append(obj)
+            cleaned_batch.append(obj)
 
-        return self.cleaned_data
+        return cleaned_batch
+
     # Saves cleaned data to output file
     def save_data(self):
-        with open(self.output_file, 'w', encoding='utf-8') as f:
-            json.dump(self.cleaned_data, f, indent=4)
-        print(f"Successfully saved {len(self.cleaned_data)} cleaned entries to {self.output_file}")
+        try:
+            with open(self.output_file, 'w', encoding='utf-8') as f:
+                json.dump(self.cleaned_data, f, indent=4)
+            print(f"Successfully saved {len(self.cleaned_data)} cleaned entries to {self.output_file}")
+        except Exception as e:
+            print(f"Error saving data: {e}")
 
     # ---------- Helpers ----------
 
@@ -117,6 +177,7 @@ class DataCleaner:
         if s == "":
             return "" if keep_empty else None
         return s
+    
     # stops null/empty strings except for comments from being in cleaned data
     def _prune_nulls(self, obj):
        
@@ -136,6 +197,7 @@ class DataCleaner:
 
         pruned.setdefault("Comments", "")
         return pruned
+
     # Parses status and date from text blobs
     def _parse_status_date(self, text):
         t = str(text).lower()
@@ -158,6 +220,7 @@ class DataCleaner:
             return status, f"{match2.group(2)} {match2.group(1)}"
 
         return status, None
+
     # Handles various date formats manually
     def _manual_format_date(self, d_str):
         if not d_str:
@@ -191,6 +254,7 @@ class DataCleaner:
 
         day = day_match.group(0)
         return f"{day} {month} {year}"
+
     # Extracts the semester 
     def _extract_season(self, text):
         match = re.search(r'(Fall|Spring|Summer|Winter)\s+\d{4}', text, re.IGNORECASE)
@@ -225,10 +289,8 @@ class DataCleaner:
 
         return res
 
-
 # ---------- Execution ----------
 if __name__ == "__main__":
     cleaner = DataCleaner()
-    raw = cleaner.load_data()
-    cleaner.clean_data(raw)
-    cleaner.save_data()
+    # Execute the update_and_merge logic instead of just cleaning
+    cleaner.update_and_merge()

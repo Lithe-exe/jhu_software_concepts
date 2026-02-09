@@ -1,16 +1,16 @@
 from flask import Flask, render_template, redirect, url_for, flash
-import load_data
-import query_data
-from scrape import GradCafeScraper
-from clean import DataCleaner
+import board.load_data
+import board.query_data 
+from board.scrape import GradCafeScraper
+from board.clean import DataCleaner
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="board/templates", static_folder="board/static")
 app.secret_key = 'secret'
 
 @app.route('/')
 def index():
     try:
-        analyzer = query_data.DataAnalyzer()
+        analyzer = board.query_data.DataAnalyzer()
         data = analyzer.get_analysis()
     except Exception as e:
         data = {}
@@ -40,7 +40,7 @@ def pull_data():
         # 3. LOAD
         print("3. Loading to Database...")
         # Call the load_data function from load_data.py
-        load_data.load_data(final_file)
+        board.load_data.load_data(final_file, reset=False)
 
         flash("Success! Data scraped, cleaned, and loaded.")
 
@@ -50,7 +50,7 @@ def pull_data():
 
     return redirect(url_for('index'))
 
-# Route for the "Update Analysis" button in your HTML
+# Route for the "Update Analysis" button in HTML
 @app.route('/update-analysis', methods=['POST'])
 def update_analysis():
     flash("Analysis updated (refreshing data from DB).")

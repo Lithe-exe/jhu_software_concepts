@@ -4,6 +4,13 @@ import urllib3
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 
+# Import the DataCleaner class from your clean.py file
+# This allows us to "push" the data to the cleaner immediately after scraping
+try:
+    from clean import DataCleaner
+except ImportError:
+    print("Warning: clean.py not found. Data will be scraped but not cleaned/merged.")
+    DataCleaner = None
 
 class GradCafeScraper:
     BASE_URL = "https://www.thegradcafe.com/survey/index.php"
@@ -13,23 +20,32 @@ class GradCafeScraper:
         self.debug = debug
         self.raw_data = []
         self.http = self._setup_http()
+        self.latest_stored_date = None
 
         # AUTO-RESUME LOGIC 
         try:
             with open(self.output_file, "r", encoding="utf-8") as f:
                 self.raw_data = json.load(f)
+            
             if not isinstance(self.raw_data, list):
-                raise ValueError("JSON root is not a list")
-            print(f"Loaded {len(self.raw_data)} existing entries. Resuming scrape...")
+                print("JSON root is not a list. Starting fresh.")
+                self.raw_data = []
+            
+            # Identify the most recent date in the existing file to know when to stop
+            if len(self.raw_data) > 0:
+                for entry in self.raw_data:
+                    if entry.get("raw_date"):
+                        self.latest_stored_date = entry.get("raw_date")
+                        print(f"Loaded existing raw data. Will stop scraping if date matches: {self.latest_stored_date}")
+                        break
         except FileNotFoundError:
-            print("No existing file found. Starting fresh.")
+            print("No existing raw file found. Starting fresh.")
             self.raw_data = []
         except Exception:
-            print("Existing JSON is corrupt/empty or invalid. Starting fresh.")
+            print("Existing JSON is corrupt or invalid. Starting fresh.")
             self.raw_data = []
 
     def _setup_http(self):
-       # Timeouts and Retries in case of cloudflare or transient issues 
         retry = Retry(
             total=10,
             connect=5,
@@ -48,12 +64,9 @@ class GradCafeScraper:
         )
 
     def _build_url(self, page: int) -> str:
-        # Creates URL for a given page number| Critical for continuing pagination
-        # q=* (search all), t=a (all results), page=page_number
         return f"{self.BASE_URL}?q=%2A&t=a&o=&page={page}"
 
     def _fetch_html(self, url: str) -> str | None:
-         # Fetches HTML content from a URL with proper headers
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -62,27 +75,20 @@ class GradCafeScraper:
             ),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            # Important: ask for uncompressed so we don't accidentally decode garbage
             "Accept-Encoding": "identity",
             "Connection": "keep-alive",
             "Referer": "https://www.thegradcafe.com/",
         }
 
         try:
-            # preload_content=False lets us decode properly via read(decode_content=True)
             r = self.http.request("GET", url, headers=headers, preload_content=False)
-
             raw = r.read(decode_content=True)
             text = raw.decode("utf-8", errors="replace")
 
             if self.debug:
                 ctype = r.headers.get("content-type")
-                cenc = r.headers.get("content-encoding")
-                print(f"[DEBUG] HTTP {r.status} | CT={ctype} | CE={cenc} | {url}")
-                snippet = re.sub(r"\s+", " ", text[:400]).strip()
-                print(f"[DEBUG] SNIPPET: {snippet}")
+                print(f"[DEBUG] HTTP {r.status} | CT={ctype} | {url}")
 
-            # Treat hard errors as no HTML
             if r.status >= 400 and r.status != 429:
                 print(f"HTTP {r.status} for {url}")
                 return None
@@ -91,27 +97,22 @@ class GradCafeScraper:
         except Exception as e:
             print(f"Request failed for {url}: {e}")
             return None
-    # Scrapes data until target count is met or too many empty pages encountered. Resumes from existing data if target count is not met prior to stopping.
-    def scrape_data(self, target_count=50000, save_every_pages=8, max_empty_pages=10):
-       
-        # Determine starting page. Each page has ~20 entries when I counted 01/28/25.
-        if len(self.raw_data) > 0:
-            current_page = max(1, (len(self.raw_data) // 20) + 1)
-        else:
-            current_page = 1
 
-        print(f"--- STARTING SCRAPE AT PAGE {current_page} ---")
+    def scrape_data(self, target_count=50000, save_every_pages=8, max_empty_pages=10, max_pages=10000):
+        # Always start at Page 1 to get the newest updates
+        current_page = 1
+        pages_scraped_session = 0
+        print(f"--- STARTING SCRAPE (Max Pages: {max_pages}) ---")
 
-        # Signature set for deduplication
-        seen = set()
-        for e in self.raw_data:
-            sig = (e.get("raw_inst"), e.get("raw_prog"), str(e.get("raw_text"))[:50])
-            seen.add(sig)
-
+        new_collected_data = []
+        stop_scraping = False
         empty_streak = 0
-        # Main scraping loop
+        
+        seen_in_session = set()
+
         try:
-            while len(self.raw_data) < target_count:
+            # Added check: stop if we exceed max_pages
+            while not stop_scraping and len(new_collected_data) < target_count and pages_scraped_session < max_pages:
                 url = self._build_url(current_page)
                 html = self._fetch_html(url)
 
@@ -126,107 +127,91 @@ class GradCafeScraper:
 
                 soup = BeautifulSoup(html, "html.parser")
 
-                # Cloudflare / block page detection (common strings)
+                # Cloudflare check
                 page_text = soup.get_text(" ", strip=True)
-                if any(
-                    s in page_text
-                    for s in (
-                        "Just a moment",
-                        "Checking your browser",
-                        "Attention Required",
-                        "Cloudflare",
-                        "You have been blocked",
-                    )
-                ):
-                    print("⚠️ Looks like a Cloudflare / blocked page, not real results.")
-                     # If cloudFlare is blocking then end the scrape here
-                    if self.debug:
-                        print("[DEBUG] BLOCK PAGE TEXT (first 300):")
-                        print(re.sub(r"\s+", " ", page_text[:300]).strip())
+                if any(s in page_text for s in ("Just a moment", "Cloudflare", "You have been blocked")):
+                    print("⚠️ Looks like a Cloudflare / blocked page.")
                     break
 
-                # Structure check
-                if self.debug:
-                    print(
-                        f"[DEBUG] tr={len(soup.find_all('tr'))}, td={len(soup.find_all('td'))}, "
-                        f"div={len(soup.find_all('div'))}"
-                    )
-
                 new_entries = self._extract_data_from_soup(soup, url)
-                # Handle empty page but is a patchwork code as there shouldn't be any empty pages in normal operation. Catch all for blocs I can't predict.
+                
                 if not new_entries:
                     print(f"No entries found on page {current_page}.")
                     empty_streak += 1
                     if empty_streak >= max_empty_pages:
-                        print("Too many empty pages in a row. Stopping.")
                         break
                     current_page += 1
                     continue
 
                 empty_streak = 0
+                added_on_page = 0
 
-                # Deduplicate and Append to avoid duplicates & skewing data
-                added_count = 0
                 for e in new_entries:
-                    sig = (e.get("raw_inst"), e.get("raw_prog"), str(e.get("raw_text"))[:50])
-                    if sig in seen:
-                        continue
-                    seen.add(sig)
-                    self.raw_data.append(e)
-                    added_count += 1
+                    # 1. CHECK STOP CONDITION (Date Match)
+                    if self.latest_stored_date and e.get("raw_date") == self.latest_stored_date:
+                        print(f"Found overlap with existing raw data date ({self.latest_stored_date}). Stopping scrape.")
+                        stop_scraping = True
+                        break
 
-                print(f"Pg {current_page} | Added: {added_count} | Total: {len(self.raw_data)}")
+                    # 2. Add to new list
+                    sig = (e.get("raw_inst"), e.get("raw_prog"), str(e.get("raw_text"))[:50])
+                    if sig not in seen_in_session:
+                        seen_in_session.add(sig)
+                        new_collected_data.append(e)
+                        added_on_page += 1
+
+                print(f"Pg {current_page} | New Entries: {added_on_page} | Session Total: {len(new_collected_data)}")
+                
+                if stop_scraping:
+                    break
 
                 current_page += 1
-
-                # Incremental Save
-                if current_page % save_every_pages == 0:
-                    self.save_raw_data()
+                pages_scraped_session += 1
+            
+            if pages_scraped_session >= max_pages:
+                print(f"Reached page limit of {max_pages}. Stopping.")
 
         except KeyboardInterrupt:
             print("Scraping stopped by user.")
         except Exception as e:
             print(f"Critical Error: {e}")
-        finally:
-            self.save_raw_data()
-
-        return self.raw_data[:target_count]
+        
+        # Merge new data on top of old raw data (keeping raw_applicant_data.json updated too)
+        print(f"Merging {len(new_collected_data)} new raw entries with {len(self.raw_data)} existing raw entries.")
+        self.raw_data = new_collected_data + self.raw_data
+        
+        self.save_raw_data()
+        return self.raw_data
 
     def _extract_data_from_soup(self, soup, url):
-        # Heavily based on HTML structure of website. If site changes this will not work but analysis can be redone from Webdata_raw.py
         entries = []
-
-        # Try table rows first
         rows = soup.find_all("tr")
         if not rows:
             return entries
 
         current_entry = None
-
-        # Decision keywords
+        
+        date_re = re.compile(r"\d{1,2}\s+[A-Za-z]{3}\s+\d{4}")
         decision_re = re.compile(r"(Accepted|Rejected|Wait listed|Waitlisted|Interview)", re.IGNORECASE)
 
         for row in rows:
             cells = row.find_all("td")
             is_main_row = False
 
-            # Heuristic main row detection
             if len(cells) >= 2:
-                
                 if row.find("div", class_=lambda x: x and "font-medium" in x):
                     is_main_row = True
                 elif len(cells[0].get_text(strip=True)) > 2:
                     is_main_row = True
 
             if is_main_row:
-                # Save previous entry
                 if current_entry:
                     current_entry["raw_comments"] = re.sub(r"\s+", " ", current_entry["raw_comments"]).strip()
                     current_entry["raw_text"] = re.sub(r"\s+", " ", current_entry["raw_text"]).strip()
                     entries.append(current_entry)
-                # Links text from html to data fields 
-                school = cells[0].get_text(strip=True)
 
+                school = cells[0].get_text(strip=True)
+                
                 prog_block = cells[1]
                 spans = prog_block.find_all("span")
                 prog_text = spans[0].get_text(strip=True) if len(spans) > 0 else ""
@@ -237,6 +222,14 @@ class GradCafeScraper:
                 match = decision_re.search(full_row_text)
                 decision_hint = match.group(0) if match else ""
 
+                found_date = ""
+                for cell in cells:
+                    txt = cell.get_text(" ", strip=True)
+                    date_match = date_re.search(txt)
+                    if date_match:
+                        found_date = date_match.group(0)
+                        break
+
                 current_entry = {
                     "raw_inst": school,
                     "raw_prog": prog_text,
@@ -245,22 +238,20 @@ class GradCafeScraper:
                     "raw_comments": "",
                     "url": url,
                     "raw_decision_hint": decision_hint,
+                    "raw_date": found_date 
                 }
 
             elif current_entry:
-                # Detail row (stats or comments)
                 row_clean = re.sub(r"\s+", " ", row.get_text(" ", strip=True))
                 if row_clean:
                     current_entry["raw_text"] += " " + row_clean
 
-                # Extract Comments
                 comment_p = row.find("p")
                 if comment_p:
                     txt = comment_p.get_text(strip=True)
                     if txt:
                         current_entry["raw_comments"] += " " + txt
 
-        # Append final entry
         if current_entry:
             current_entry["raw_comments"] = re.sub(r"\s+", " ", current_entry["raw_comments"]).strip()
             current_entry["raw_text"] = re.sub(r"\s+", " ", current_entry["raw_text"]).strip()
@@ -272,12 +263,34 @@ class GradCafeScraper:
         try:
             with open(self.output_file, "w", encoding="utf-8") as f:
                 json.dump(self.raw_data, f, indent=2, ensure_ascii=False)
-            print(f"Saved {len(self.raw_data)} entries to {self.output_file}")
+            print(f"Saved total {len(self.raw_data)} entries to {self.output_file}")
         except Exception as e:
             print(f"Error saving: {e}")
 
-
 if __name__ == "__main__":
+    # 1. Determine Max Pages based on whether applicant_data.json exists
+    max_pages_limit = 10000 # Default to high number (fresh scrape)
+    
+    try:
+        # Check if the final cleaned file exists
+        with open("applicant_data.json", "r", encoding="utf-8") as f:
+            # If we can open it, it exists. We only want recent updates.
+            print("Existing 'applicant_data.json' found. Limiting scrape to 10 pages.")
+            max_pages_limit = 10
+    except FileNotFoundError:
+        print("'applicant_data.json' not found. Performing full scrape.")
+        max_pages_limit = 10
+    except Exception:
+        # If empty or corrupt, do full scrape
+        max_pages_limit = 10
+
+    # 2. Run Scraper
     scraper = GradCafeScraper(output_file="raw_applicant_data.json", debug=True)
-    scraper.scrape_data(target_count=50000)
-    scraper.save_raw_data()
+    scraper.scrape_data(target_count=50000, max_pages=max_pages_limit)
+    
+    # 3. Push to Clean.py (Append Logic)
+    if DataCleaner:
+        print("\n--- Pushing to Clean.py ---")
+        cleaner = DataCleaner()
+        cleaner.update_and_merge()
+        print("--- Update Complete ---")

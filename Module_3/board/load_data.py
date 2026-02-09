@@ -45,16 +45,17 @@ def clean_date(value):
     return s
 
 # Accept filename as an argument so app.py can pass it in
-def load_data(filename="applicant_data.json"):
+def load_data(filename="applicant_data.json", reset=False):
     print(f"--- Loading data from {filename} ---")
     try:
         with psycopg.connect(DB_INFO) as conn:
             with conn.cursor() as cur:
                 
-                # 1. Reset Table
-                cur.execute("DROP TABLE IF EXISTS applicants;")
+                # 1. Create table if it doesn't exist (optionally reset)
+                if reset:
+                    cur.execute("DROP TABLE IF EXISTS applicants;")
                 cur.execute("""
-                CREATE TABLE applicants (
+                CREATE TABLE IF NOT EXISTS applicants (
                     p_id SERIAL PRIMARY KEY,
                     program TEXT,
                     university TEXT,
@@ -73,7 +74,10 @@ def load_data(filename="applicant_data.json"):
                     llm_generated_university TEXT
                 );
                 """)
-                print("Table 'applicants' created.")
+                if reset:
+                    print("Table 'applicants' reset.")
+                else:
+                    print("Table 'applicants' ready.")
 
                 # 2. Read JSON (Using try/except instead of os.path.exists)
                 try:

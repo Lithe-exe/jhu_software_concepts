@@ -1,5 +1,5 @@
 import psycopg
-from load_data import DB_INFO
+from .load_data import DB_INFO
 
 class DataAnalyzer:
     def __init__(self):
