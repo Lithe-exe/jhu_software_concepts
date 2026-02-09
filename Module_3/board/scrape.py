@@ -9,13 +9,19 @@ from bs4 import BeautifulSoup
 try:
     from clean import DataCleaner
 except ImportError:
-    print("Warning: clean.py not found. Data will be scraped but not cleaned/merged.")
-    DataCleaner = None
+    try:
+        from board.clean import DataCleaner
+    except ImportError:
+        print("Warning: clean.py not found. Data will be scraped but not cleaned/merged.")
+        DataCleaner = None
 
 class GradCafeScraper:
     BASE_URL = "https://www.thegradcafe.com/survey/index.php"
 
     def __init__(self, output_file="raw_applicant_data.json", debug=True):
+        base_dir = __file__.rsplit("\\", 1)[0]
+        if output_file and not (output_file.startswith("\\") or ":" in output_file):
+            output_file = base_dir + "\\" + output_file
         self.output_file = output_file
         self.debug = debug
         self.raw_data = []
@@ -98,10 +104,22 @@ class GradCafeScraper:
             print(f"Request failed for {url}: {e}")
             return None
 
-    def scrape_data(self, target_count=50000, save_every_pages=8, max_empty_pages=10, max_pages=10000):
+    def scrape_data(self, target_count=50000, save_every_pages=8, max_empty_pages=10, max_pages=None):
         # Always start at Page 1 to get the newest updates
         current_page = 1
         pages_scraped_session = 0
+        if max_pages is None:
+            # Determine max pages based on whether applicant_data.json exists
+            try:
+                base_dir = __file__.rsplit("\\", 1)[0]
+                applicant_path = base_dir + "\\..\\applicant_data.json"
+                with open(applicant_path, "r", encoding="utf-8"):
+                    max_pages = 5
+                    print("Existing 'applicant_data.json' found. Limiting scrape to 5 pages.")
+            except FileNotFoundError:
+                max_pages = 10000
+            except Exception:
+                max_pages = 10000
         print(f"--- STARTING SCRAPE (Max Pages: {max_pages}) ---")
 
         new_collected_data = []
@@ -273,16 +291,18 @@ if __name__ == "__main__":
     
     try:
         # Check if the final cleaned file exists
-        with open("applicant_data.json", "r", encoding="utf-8") as f:
+        base_dir = __file__.rsplit("\\", 1)[0]
+        applicant_path = base_dir + "\\..\\applicant_data.json"
+        with open(applicant_path, "r", encoding="utf-8") as f:
             # If we can open it, it exists. We only want recent updates.
-            print("Existing 'applicant_data.json' found. Limiting scrape to 10 pages.")
-            max_pages_limit = 10
+            print("Existing 'applicant_data.json' found. Limiting scrape to 5 pages.")
+            max_pages_limit = 5
     except FileNotFoundError:
         print("'applicant_data.json' not found. Performing full scrape.")
-        max_pages_limit = 10
+        max_pages_limit = 10000
     except Exception:
         # If empty or corrupt, do full scrape
-        max_pages_limit = 10
+        max_pages_limit = 10000
 
     # 2. Run Scraper
     scraper = GradCafeScraper(output_file="raw_applicant_data.json", debug=True)

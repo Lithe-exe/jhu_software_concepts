@@ -3,6 +3,11 @@ import re
 
 class DataCleaner:
     def __init__(self, input_file="raw_applicant_data.json", output_file="applicant_data.json"):
+        base_dir = __file__.rsplit("\\", 1)[0]
+        if input_file and not (input_file.startswith("\\") or ":" in input_file):
+            input_file = base_dir + "\\" + input_file
+        if output_file and not (output_file.startswith("\\") or ":" in output_file):
+            output_file = base_dir + "\\..\\" + output_file
         self.input_file = input_file
         self.output_file = output_file
         self.cleaned_data = []

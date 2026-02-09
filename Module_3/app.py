@@ -21,8 +21,9 @@ def index():
 def pull_data():
     print("--- Starting Data Pull Process ---")
     
-    raw_file = "raw_applicant_data.json"
-    final_file = "applicant_data.json" 
+    base_dir = __file__.rsplit("\\", 1)[0]
+    raw_file = base_dir + "\\board\\raw_applicant_data.json"
+    final_file = base_dir + "\\applicant_data.json"
 
     try:
         # 1. SCRAPE
@@ -31,15 +32,13 @@ def pull_data():
         raw_data = scraper.scrape_data(target_count=50000) 
         scraper.save_raw_data()
 
-        # 2. CLEAN
-        print("2. Cleaning...")
+        # 2. CLEAN + MERGE
+        print("2. Cleaning + Merging...")
         cleaner = DataCleaner(input_file=raw_file, output_file=final_file)
-        cleaner.clean_data(raw_data) 
-        cleaner.save_data()
+        cleaner.update_and_merge()
 
-        # 3. LOAD
+        # 3. LOAD MERGED DATA
         print("3. Loading to Database...")
-        # Call the load_data function from load_data.py
         board.load_data.load_data(final_file, reset=False)
 
         flash("Success! Data scraped, cleaned, and loaded.")
