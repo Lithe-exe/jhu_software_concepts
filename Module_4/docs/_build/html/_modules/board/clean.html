@@ -35,7 +35,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 
 <div class="viewcode-block" id="DataCleaner">
-<a class="viewcode-back" href="../../source/modules.html#board.clean.DataCleaner">[docs]</a>
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DataCleaner</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_file</span><span class="o">=</span><span class="s2">&quot;raw_applicant_data.json&quot;</span><span class="p">,</span> <span class="n">output_file</span><span class="o">=</span><span class="s2">&quot;applicant_data.json&quot;</span><span class="p">):</span>
         <span class="n">base_dir</span> <span class="o">=</span> <span class="vm">__file__</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
@@ -48,7 +48,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">cleaned_data</span> <span class="o">=</span> <span class="p">[]</span>
 
 <div class="viewcode-block" id="DataCleaner.update_and_merge">
-<a class="viewcode-back" href="../../source/modules.html#board.clean.DataCleaner.update_and_merge">[docs]</a>
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner.update_and_merge">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">update_and_merge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># 1. Load Existing Data, stops dupes &amp; merges new with old, keeping newest on top</span>
         <span class="n">existing_data</span> <span class="o">=</span> <span class="p">[]</span>
@@ -119,7 +119,7 @@
 
 
 <div class="viewcode-block" id="DataCleaner.clean_data">
-<a class="viewcode-back" href="../../source/modules.html#board.clean.DataCleaner.clean_data">[docs]</a>
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner.clean_data">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">clean_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">):</span>
         <span class="c1"># Local list to hold newly cleaned items</span>
         <span class="n">cleaned_batch</span> <span class="o">=</span> <span class="p">[]</span>
@@ -209,7 +209,7 @@
 
     <span class="c1"># Saves cleaned data to output file</span>
 <div class="viewcode-block" id="DataCleaner.save_data">
-<a class="viewcode-back" href="../../source/modules.html#board.clean.DataCleaner.save_data">[docs]</a>
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner.save_data">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
@@ -325,22 +325,31 @@
         <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;GPA\s*:?\s*(\d\.\d+)&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="kc">None</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_gre</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;verbal&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;aw&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_gre</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;aw&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
 
-        <span class="n">v</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;V\s*(\d</span><span class="si">{3}</span><span class="s1">)&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">v</span><span class="p">:</span>
-            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;verbal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_total</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bGRE\s*:?\s*(\d</span><span class="si">{3}</span><span class="s2">)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_total</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m_total</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
 
-        <span class="n">aw</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;AW\s*(\d\.\d+)&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">aw</span><span class="p">:</span>
-            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;aw&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">aw</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_v</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bV\s*(\d</span><span class="si">{3}</span><span class="s2">)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_v</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m_v</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
 
-        <span class="n">t</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;GRE\s*(\d</span><span class="si">{3}</span><span class="s1">)&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">t</span><span class="p">:</span>
-            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_q</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bQ\s*(\d</span><span class="si">{3}</span><span class="s2">)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_q</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m_q</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
 
-        <span class="k">return</span> <span class="n">res</span></div>
+        <span class="n">aw</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_aw</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bAW\s*([0-6](?:\.\d)?)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_aw</span><span class="p">:</span>
+            <span class="n">aw</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m_aw</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="n">total</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span> <span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;aw&quot;</span><span class="p">:</span> <span class="n">aw</span><span class="p">}</span></div>
 
 
 <span class="c1"># ---------- Execution ----------</span>
@@ -356,7 +365,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../source/index.html">Modulo_4</a></h1>
+<h1 class="logo"><a href="../../index.html">Modulo_4</a></h1>
 
 
 
@@ -377,14 +386,14 @@
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../source/modules.html">API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../source/testing.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Testing Guide</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
-  <li><a href="../../source/index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
   <li><a href="../index.html">Module code</a><ul>
   </ul></li>
   </ul></li>

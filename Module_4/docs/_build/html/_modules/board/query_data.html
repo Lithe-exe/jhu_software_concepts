@@ -35,7 +35,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.load_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DB_INFO</span>
 
 <div class="viewcode-block" id="DataAnalyzer">
-<a class="viewcode-back" href="../../source/modules.html#board.query_data.DataAnalyzer">[docs]</a>
+<a class="viewcode-back" href="../../modules.html#board.query_data.DataAnalyzer">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DataAnalyzer</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">db_config</span> <span class="o">=</span> <span class="n">DB_INFO</span>
@@ -51,10 +51,14 @@
             <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;SQL Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
 
 <div class="viewcode-block" id="DataAnalyzer.get_analysis">
-<a class="viewcode-back" href="../../source/modules.html#board.query_data.DataAnalyzer.get_analysis">[docs]</a>
+<a class="viewcode-back" href="../../modules.html#board.query_data.DataAnalyzer.get_analysis">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Runs all queries and returns a dictionary of results.&quot;&quot;&quot;</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span> <span class="c1"># required numeric fields (safe defaults)</span>
+        <span class="s2">&quot;gpa&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;gre&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;verbal&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;writing&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,}</span>
 
         <span class="c1"># Q1: Applicants for Spring 2026</span>
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span>
@@ -76,6 +80,10 @@
         <span class="n">avg_gre</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT ROUND(AVG(gre)::numeric, 2) FROM applicants;&quot;</span><span class="p">)</span>
         <span class="n">avg_gre_v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT ROUND(AVG(gre_v)::numeric, 2) FROM applicants;&quot;</span><span class="p">)</span>
         <span class="n">avg_gre_aw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT ROUND(AVG(gre_aw)::numeric, 2) FROM applicants;&quot;</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;gpa&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_gpa</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;gre&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_gre</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;verbal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_gre_v</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;writing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_gre_aw</span>
         
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;GPA: </span><span class="si">{</span><span class="n">avg_gpa</span><span class="si">}</span><span class="s2">, GRE: </span><span class="si">{</span><span class="n">avg_gre</span><span class="si">}</span><span class="s2">, Verbal: </span><span class="si">{</span><span class="n">avg_gre_v</span><span class="si">}</span><span class="s2">, AW: </span><span class="si">{</span><span class="n">avg_gre_aw</span><span class="si">}</span><span class="s2">&quot;</span>
 
@@ -154,7 +162,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../source/index.html">Modulo_4</a></h1>
+<h1 class="logo"><a href="../../index.html">Modulo_4</a></h1>
 
 
 
@@ -175,14 +183,14 @@
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../source/modules.html">API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../source/testing.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Testing Guide</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
-  <li><a href="../../source/index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
   <li><a href="../index.html">Module code</a><ul>
   </ul></li>
   </ul></li>
