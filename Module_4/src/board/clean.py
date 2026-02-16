@@ -281,22 +281,31 @@ class DataCleaner:
         match = re.search(r'GPA\s*:?\s*(\d\.\d+)', text, re.IGNORECASE)
         return float(match.group(1)) if match else None
 
-    def _extract_gre(self, text):
-        res = {"total": None, "verbal": None, "aw": None}
+    def _extract_gre(self, text: str):
+        if not text:
+            return {"total": None, "v": None, "q": None, "aw": None}
 
-        v = re.search(r'V\s*(\d{3})', text)
-        if v:
-            res["verbal"] = int(v.group(1))
+        total = None
+        m_total = re.search(r"\bGRE\s*:?\s*(\d{3})\b", text, re.I)
+        if m_total:
+            total = int(m_total.group(1))
 
-        aw = re.search(r'AW\s*(\d\.\d+)', text)
-        if aw:
-            res["aw"] = float(aw.group(1))
+        v = None
+        m_v = re.search(r"\bV\s*(\d{3})\b", text, re.I)
+        if m_v:
+            v = int(m_v.group(1))
 
-        t = re.search(r'GRE\s*(\d{3})', text)
-        if t:
-            res["total"] = int(t.group(1))
+        q = None
+        m_q = re.search(r"\bQ\s*(\d{3})\b", text, re.I)
+        if m_q:
+            q = int(m_q.group(1))
 
-        return res
+        aw = None
+        m_aw = re.search(r"\bAW\s*([0-6](?:\.\d)?)\b", text, re.I)
+        if m_aw:
+            aw = float(m_aw.group(1))
+
+        return {"total": total, "v": v, "q": q, "aw": aw}
 
 # ---------- Execution ----------
 if __name__ == "__main__":

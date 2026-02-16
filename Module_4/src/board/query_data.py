@@ -17,7 +17,11 @@ class DataAnalyzer:
 
     def get_analysis(self):
         """Runs all queries and returns a dictionary of results."""
-        data = {}
+        data = { # required numeric fields (safe defaults)
+        "gpa": None,
+        "gre": None,
+        "verbal": None,
+        "writing": None,}
 
         # Q1: Applicants for Spring 2026
         data['q1'] = self._get_single_result(
@@ -39,6 +43,10 @@ class DataAnalyzer:
         avg_gre = self._get_single_result("SELECT ROUND(AVG(gre)::numeric, 2) FROM applicants;")
         avg_gre_v = self._get_single_result("SELECT ROUND(AVG(gre_v)::numeric, 2) FROM applicants;")
         avg_gre_aw = self._get_single_result("SELECT ROUND(AVG(gre_aw)::numeric, 2) FROM applicants;")
+        data["gpa"] = avg_gpa
+        data["gre"] = avg_gre
+        data["verbal"] = avg_gre_v
+        data["writing"] = avg_gre_aw
         
         data['q3'] = f"GPA: {avg_gpa}, GRE: {avg_gre}, Verbal: {avg_gre_v}, AW: {avg_gre_aw}"
 

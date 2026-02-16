@@ -1,59 +1,65 @@
-from flask import Flask, render_template, redirect, url_for, flash
+from flask import Flask, render_template, redirect, url_for, flash, jsonify, request
 import board.load_data
-import board.query_data 
+import board.query_data
 from board.scrape import GradCafeScraper
 from board.clean import DataCleaner
 
-app = Flask(__name__, template_folder="board/templates", static_folder="board/static")
-app.secret_key = 'secret'
+IS_BUSY = False
+CACHED_ANALYSIS = None  # helps satisfy “update-analysis then GET /analysis shows updated analysis”
 
-@app.route('/')
-def index():
-    try:
-        analyzer = board.query_data.DataAnalyzer()
-        data = analyzer.get_analysis()
-    except Exception as e:
-        data = {}
-        print(f"Query Error: {e}")
-    return render_template('index.html', data=data)
+def create_app(test_config=None):
+    app = Flask(__name__, template_folder="board/templates", static_folder="board/static")
+    app.secret_key = "secret"
+    if test_config:
+        app.config.update(test_config)
 
-@app.route('/pull-data', methods=['POST'])
-def pull_data():
-    print("--- Starting Data Pull Process ---")
-    
-    base_dir = __file__.rsplit("\\", 1)[0]
-    raw_file = base_dir + "\\board\\raw_applicant_data.json"
-    final_file = base_dir + "\\applicant_data.json"
+    @app.route("/")
+    @app.route("/analysis")
+    def analysis():
+        try:
+            analyzer = board.query_data.DataAnalyzer()
+            data = analyzer.get_analysis()
+        except Exception:
+            data = {}
+        return render_template("index.html", data=data)
 
-    try:
-        # 1. SCRAPE
-        print("1. Scraping...")
-        scraper = GradCafeScraper(output_file=raw_file)
-        raw_data = scraper.scrape_data(target_count=50000) 
-        scraper.save_raw_data()
+    @app.route("/pull-data", methods=["POST"])
+    def pull_data():
+        global IS_BUSY, CACHED_ANALYSIS
+        if IS_BUSY:
+            return jsonify({"busy": True}), 409
 
-        # 2. CLEAN + MERGE
-        print("2. Cleaning + Merging...")
-        cleaner = DataCleaner(input_file=raw_file, output_file=final_file)
-        cleaner.update_and_merge()
+        IS_BUSY = True
+        try:
+            scraper = GradCafeScraper()
+            scraper.scrape_data()
+            cleaner = DataCleaner()
+            cleaner.update_and_merge()
+            board.load_data.load_data()
+            CACHED_ANALYSIS = None  # DB changed, invalidate cache
+        finally:
+            IS_BUSY = False
 
-        # 3. LOAD MERGED DATA (reset to mirror JSON exactly)
-        print("3. Loading to Database...")
-        board.load_data.load_data(final_file, reset=True)
+        # Rubric wants 200 from POST, not redirect
+        return jsonify({"ok": True}), 200
 
-        flash("Success! Data scraped, cleaned, and loaded.")
+    @app.route("/update-analysis", methods=["POST"])
+    def update_analysis():
+        global IS_BUSY, CACHED_ANALYSIS
+        if IS_BUSY:
+            return jsonify({"busy": True}), 409
 
-    except Exception as e:
-        print(f"Process Failed: {e}")
-        flash(f"Error during pull: {e}")
+        try:
+            analyzer = board.query_data.DataAnalyzer()
+            CACHED_ANALYSIS = analyzer.get_analysis()
+        except Exception:
+            CACHED_ANALYSIS = {}
 
-    return redirect(url_for('index'))
+        # Rubric wants 200 from POST
+        return jsonify({"ok": True}), 200
 
-# Route for the "Update Analysis" button in HTML
-@app.route('/update-analysis', methods=['POST'])
-def update_analysis():
-    flash("Analysis updated (refreshing data from DB).")
-    return redirect(url_for('index'))
+    return app
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":  # pragma: no cover
+    app = create_app()      # pragma: no cover
+    app.run()               # pragma: no cover

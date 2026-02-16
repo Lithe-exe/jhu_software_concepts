@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>board.query_data &#8212; Modulo_4  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for board.query_data</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">psycopg</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.load_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DB_INFO</span>
+
+<div class="viewcode-block" id="DataAnalyzer">
+<a class="viewcode-back" href="../../source/modules.html#board.query_data.DataAnalyzer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataAnalyzer</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db_config</span> <span class="o">=</span> <span class="n">DB_INFO</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_single_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Helper to execute a query and return the first value.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db_config</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+                <span class="c1"># Return the value, or &quot;N/A&quot; if the result is empty</span>
+                <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">result</span> <span class="k">else</span> <span class="s2">&quot;N/A&quot;</span>
+        <span class="k">except</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;SQL Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<div class="viewcode-block" id="DataAnalyzer.get_analysis">
+<a class="viewcode-back" href="../../source/modules.html#board.query_data.DataAnalyzer.get_analysis">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Runs all queries and returns a dictionary of results.&quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Q1: Applicants for Spring 2026</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT COUNT(*) FROM applicants WHERE term = &#39;Spring 2026&#39;;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Q2: Percentage International (2 decimal places)</span>
+        <span class="c1"># Logic: (Count International / Total Count) * 100</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT ROUND(</span>
+<span class="s2">                (COUNT(*) FILTER (WHERE us_or_international = &#39;International&#39;)::numeric / </span>
+<span class="s2">                 NULLIF(COUNT(*), 0)) * 100, </span>
+<span class="s2">            2) FROM applicants;</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Q3: Averages (GPA, GRE, Verbal, Writing)</span>
+        <span class="c1"># We fetch them individually for cleaner string formatting</span>
+        <span class="n">avg_gpa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants;&quot;</span><span class="p">)</span>
+        <span class="n">avg_gre</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT ROUND(AVG(gre)::numeric, 2) FROM applicants;&quot;</span><span class="p">)</span>
+        <span class="n">avg_gre_v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT ROUND(AVG(gre_v)::numeric, 2) FROM applicants;&quot;</span><span class="p">)</span>
+        <span class="n">avg_gre_aw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT ROUND(AVG(gre_aw)::numeric, 2) FROM applicants;&quot;</span><span class="p">)</span>
+        
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;GPA: </span><span class="si">{</span><span class="n">avg_gpa</span><span class="si">}</span><span class="s2">, GRE: </span><span class="si">{</span><span class="n">avg_gre</span><span class="si">}</span><span class="s2">, Verbal: </span><span class="si">{</span><span class="n">avg_gre_v</span><span class="si">}</span><span class="s2">, AW: </span><span class="si">{</span><span class="n">avg_gre_aw</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># Q4: Average GPA of American Students for Spring 2026</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q4&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants </span>
+<span class="s2">            WHERE term = &#39;Spring 2026&#39; AND us_or_international = &#39;American&#39;;</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="c1"># Q5: Percent Acceptances for Spring 2025</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q5&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT ROUND(</span>
+<span class="s2">                (COUNT(*) FILTER (WHERE status ILIKE &#39;Accept%&#39;)::numeric /</span>
+<span class="s2">                 NULLIF(COUNT(*), 0)) * 100,</span>
+<span class="s2">            2) FROM applicants WHERE term = &#39;Spring 2025&#39;;</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+
+        <span class="c1"># Q6: Average GPA of Acceptances for Spring 2026</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q6&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants</span>
+<span class="s2">            WHERE term = &#39;Spring 2026&#39; AND status ILIKE &#39;Accept%&#39;;</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+
+        <span class="c1"># Q7: JHU Masters CS Applicants</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q7&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT COUNT(*) FROM applicants</span>
+<span class="s2">            WHERE university ILIKE &#39;%Johns Hopkins%&#39;</span>
+<span class="s2">            AND program ILIKE &#39;%Computer Science%&#39;</span>
+<span class="s2">            AND degree = &#39;Masters&#39;;</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+
+        <span class="c1"># Q8: Top 4 PhD CS Acceptances (Using downloaded fields)</span>
+        <span class="c1"># Georgetown, MIT, Stanford, Carnegie Mellon</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q8&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT COUNT(*) FROM applicants</span>
+<span class="s2">            WHERE term LIKE &#39;</span><span class="si">%2026%</span><span class="s2">&#39;</span>
+<span class="s2">            AND status ILIKE &#39;Accept%&#39;</span>
+<span class="s2">            AND degree = &#39;PhD&#39;</span>
+<span class="s2">            AND program ILIKE &#39;%Computer Science%&#39;</span>
+<span class="s2">            AND (university ILIKE &#39;</span><span class="si">%G</span><span class="s2">eorgetown%&#39; OR university ILIKE &#39;%MIT%&#39; OR university ILIKE &#39;%Stanford%&#39; OR university ILIKE &#39;%Carnegie Mellon%&#39;);</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+         <span class="c1"># Q9: Top 4 PhD CS Acceptances (Using LLM fields)</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;q9&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT COUNT(*) FROM applicants</span>
+<span class="s2">            WHERE term LIKE &#39;</span><span class="si">%2026%</span><span class="s2">&#39;</span>
+<span class="s2">            AND status ILIKE &#39;Accept%&#39;</span>
+<span class="s2">            AND degree = &#39;PhD&#39;</span>
+<span class="s2">            AND COALESCE(llm_generated_program, program) ILIKE &#39;%Computer Science%&#39;</span>
+<span class="s2">            AND (COALESCE(llm_generated_university, university) ILIKE &#39;</span><span class="si">%G</span><span class="s2">eorgetown%&#39; </span>
+<span class="s2">                 OR COALESCE(llm_generated_university, university) ILIKE &#39;%Massachusetts Institute of Technology%&#39; </span>
+<span class="s2">                 OR COALESCE(llm_generated_university, university) ILIKE &#39;%MIT%&#39; </span>
+<span class="s2">                 OR COALESCE(llm_generated_university, university) ILIKE &#39;%Stanford%&#39; </span>
+<span class="s2">                 OR COALESCE(llm_generated_university, university) ILIKE &#39;%Carnegie Mellon%&#39;);</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+         <span class="c1"># CQ1: Custom - Average GRE by Degree (Formatted String)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db_config</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT degree, ROUND(AVG(gre)::numeric, 0) FROM applicants WHERE degree IS NOT NULL GROUP BY degree&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+                <span class="n">data</span><span class="p">[</span><span class="s1">&#39;cq1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">res</span><span class="p">])</span> <span class="k">if</span> <span class="n">res</span> <span class="k">else</span> <span class="s2">&quot;N/A&quot;</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;cq1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;N/A&quot;</span>
+       <span class="c1"># CQ2: Custom - Total Amount of Submissions</span>
+        <span class="c1"># Count all rows in the table</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;cq2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_result</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM applicants;&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../source/index.html">Modulo_4</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../source/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/testing.html">Testing Guide</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../source/index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Sultan Jacobs.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

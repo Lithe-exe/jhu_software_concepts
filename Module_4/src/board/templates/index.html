@@ -6,16 +6,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
+   <div class="container">
         <h1>Analysis</h1>
         
-        <!-- Controls -->
-        <!-- Added inline styles to forms to help center the new text under the buttons -->
         <div class="controls" style="display: flex; gap: 20px; align-items: flex-start;">
             
             <!-- Pull Data Form -->
             <form action="/pull-data" method="POST" style="text-align: center; max-width: 200px;">
-                <button class="btn btn-blue" style="width: 100%;">Pull Data</button>
+                <!-- Added data-testid -->
+                <button class="btn btn-blue" style="width: 100%;" data-testid="pull-data-btn">Pull Data</button>
                 <div style="margin-top: 8px; font-size: 0.9rem; color: #555;">
                     Pulls the most recent updates from GradCafe.
                 </div>
@@ -23,7 +22,8 @@
 
             <!-- Update Analysis Form -->
             <form action="/update-analysis" method="POST" style="text-align: center; max-width: 200px;">
-                <button class="btn btn-green" style="width: 100%;">Update Analysis</button>
+                <!-- Added data-testid -->
+                <button class="btn btn-green" style="width: 100%;" data-testid="update-analysis-btn">Update Analysis</button>
                 <div style="margin-top: 8px; font-size: 0.9rem; color: #555;">
                     Displays the updated data after the pull is done.
                 </div>
