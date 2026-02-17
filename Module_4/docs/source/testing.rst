@@ -25,4 +25,4 @@ Example:
 
 .. code-block:: bash
 
-   pytest -m "web or buttons"
+   pytest -m "web or buttons or analysis or db or integration"
