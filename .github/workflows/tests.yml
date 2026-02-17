@@ -32,12 +32,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install sphinx
+          pip install sphinx sphinx-rtd-theme
           pip install -r Module_4/src/requirements.txt
+
+      - name: Clean old Sphinx artifacts
+        run: |
+          rm -rf Module_4/docs/_build
 
       - name: Build Sphinx HTML
         run: |
-          sphinx-build -b html Module_4/docs/source Module_4/docs/_build/html -c Module_4/docs -D root_doc=index
+          sphinx-build -E -b html Module_4/docs/source Module_4/docs/_build/html -c Module_4/docs -D root_doc=index
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
