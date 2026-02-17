@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Module_4 documentation
+Module 4 documentation
 ======================
 
 Documentation for the Testing and Documentation Assignment  
