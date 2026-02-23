@@ -22,9 +22,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r Module_5/src/requirements.txt
 
       - name: Enforce Linting with Pylint
-        # You strictly enforce a score of 10 for source code integrity here
+        # strictly enforce a score of 10 for source code integrity here
         run: pylint --fail-under=10 src/
 
       - name: Generate Dependency Graph
@@ -34,11 +35,11 @@ jobs:
           test -f dependency.svg || exit 1
 
       - name: Run Pytest
-        # You run Pytest coverage verification here
+        # run Pytest coverage verification here
         run: pytest src/
 
       - name: Run Snyk Dependency Scan
-        # You run your supply chain scanning pipeline here
+        # run your supply chain scanning pipeline here
         run: |
           npm install -g snyk
           snyk test || echo "Vulnerabilities found, but allowing pipeline to proceed."
