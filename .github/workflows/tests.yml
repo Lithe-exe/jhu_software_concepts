@@ -21,7 +21,6 @@ jobs:
       - name: Setup Environment
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
           pip install -r Module_5/src/requirements.txt
 
       - name: Enforce Linting with Pylint
@@ -39,7 +38,7 @@ jobs:
         run: pytest src/
 
       - name: Run Snyk Dependency Scan
-        # run your supply chain scanning pipeline here
+        # run supply chain scanning pipeline here
         run: |
           npm install -g snyk
           snyk test || echo "Vulnerabilities found, but allowing pipeline to proceed."
