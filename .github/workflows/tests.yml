@@ -19,22 +19,27 @@ jobs:
           python-version: '3.10'
 
       - name: Setup Environment
+        working-directory: Module_5
         run: |
           python -m pip install --upgrade pip
-          pip install -r Module_5/src/requirements.txt
+          python -m pip install -r src/requirements.txt
 
       - name: Enforce Linting with Pylint
         # strictly enforce a score of 10 for source code integrity here
+        working-directory: Module_5
         run: pylint --fail-under=10 src/
 
       - name: Generate Dependency Graph
+        working-directory: Module_5
         run: |
+          sudo apt-get update
           sudo apt-get install -y graphviz
           pydeps src/app.py --noshow -T svg -o dependency.svg
-          test -f dependency.svg || exit 1
+          test -f dependency.svg
 
       - name: Run Pytest
-        # run Pytest coverage verification here
+       # run Pytest coverage verification here
+        working-directory: Module_5
         run: pytest src/
 
       - name: Run Snyk Dependency Scan
