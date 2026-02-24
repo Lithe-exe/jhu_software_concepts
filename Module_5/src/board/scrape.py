@@ -66,7 +66,7 @@ class GradCafeScraper:
             if response.status >= 400:
                 return None
             return response.data.decode("utf-8", errors="replace")
-        except urllib3.exceptions.HTTPError as request_error:
+        except Exception as request_error:  # pylint: disable=broad-exception-caught
             if self.debug:
                 print(f"Request Error: {request_error}")
             return None
