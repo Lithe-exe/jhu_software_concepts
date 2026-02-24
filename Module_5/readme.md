@@ -1,7 +1,7 @@
 # Module 5
 Sultan Jacobs 
 JHU ID: B443F8
-Module info: Module 5 Testing and Documentation Assignment| Due 02/23/26 @ 11:59 EST
+Module info: Module 5 Software Assurance + Secure SQL (SQLi Defense) Assignment| Due 02/23/26 @ 11:59 EST
 
 ## Overview
 This module contains a Python project over a local host dynamic website that gathers info by scraping on "Gradcafe". This module has automated testing, 100% code coverage, and CI using GitHub Actions.  
