@@ -1,0 +1,3 @@
+When running snyk code test it found one medium error within app.py at line 102.
+After looking at the mentioned section of code it is counting the local host setup as a medium risk point most likely due to "debug=True"
+I added an extra layer of security to remove that possible risk

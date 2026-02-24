@@ -5,6 +5,8 @@ You use this module to initialize the Flask application, define routes, and
 orchestrate the ETL (Extract, Transform, Load) pipeline via HTTP endpoints.
 """
 
+import os
+
 from flask import Flask, render_template, flash, jsonify
 import board.load_data
 import board.query_data
@@ -99,7 +101,8 @@ def main():
     You execute this main entry point to run the application locally.
     """
     app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
+    debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=5000, debug=debug)
+    
 if __name__ == '__main__':
     main()
