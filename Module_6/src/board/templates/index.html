@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grad School Cafe Data Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+   <div class="container">
+        <h1>Analysis</h1>
+        
+        <div class="controls" style="display: flex; gap: 20px; align-items: flex-start;">
+            
+            <!-- Pull Data Form -->
+            <form action="/pull-data" method="POST" style="text-align: center; max-width: 200px;">
+                <!-- Added data-testid -->
+                <button class="btn btn-blue" style="width: 100%;" data-testid="pull-data-btn">Pull Data</button>
+                <div style="margin-top: 8px; font-size: 0.9rem; color: #555;">
+                    Pulls the most recent updates from GradCafe.
+                </div>
+            </form>
+
+            <!-- Update Analysis Form -->
+            <form action="/update-analysis" method="POST" style="text-align: center; max-width: 200px;">
+                <!-- Added data-testid -->
+                <button class="btn btn-green" style="width: 100%;" data-testid="update-analysis-btn">Update Analysis</button>
+                <div style="margin-top: 8px; font-size: 0.9rem; color: #555;">
+                    Displays the updated data after the pull is done.
+                </div>
+                <div style="margin-top: 5px; font-size: 0.85rem; color: #d93025; font-weight: bold;">
+                    ⚠️ Do not press while pulling data.
+                </div>
+            </form>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Q1 -->
+        <div class="analysis-card">
+            <div class="question">How many entries do you have in your database who have applied for Fall 2026?</div>
+            <div class="answer">Answer: Applicant count: {{ data.get('q1', 'N/A') }}</div>
+        </div>
+        
+        <!-- Q2 -->
+        <div class="analysis-card">
+            <div class="question">What percentage of entries are from International students?</div>
+            <div class="answer">Answer: Percent International: {{ data.get('q2', 'N/A') }}%</div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="analysis-card">
+            <div class="question">What is the average GPA, GRE, GRE V, GRE AW of applicants who provided these metrics?</div>
+            <div class="answer">Answer: {{ data.get('q3', 'N/A') }}</div>
+        </div>
+
+        <!-- Q4 -->
+        <div class="analysis-card">
+            <div class="question">What is the average GPA of American students in Fall 2026?</div>
+            <div class="answer">Answer: Average GPA American: {{ data.get('q4', 'N/A') }}</div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="analysis-card">
+            <div class="question">What percent of entries for Fall 2026 are Acceptances?</div>
+            <div class="answer">Answer: Acceptance percent: {{ data.get('q5', 'N/A') }}%</div>
+        </div>
+
+        <!-- Q6 -->
+        <div class="analysis-card">
+            <div class="question">What is the average GPA of applicants who applied for Fall 2026 who applied for Acceptances?</div>
+            <div class="answer">Answer: Average GPA Acceptance: {{ data.get('q6', 'N/A') }}</div>
+        </div>
+
+        <!-- Q7 -->
+        <div class="analysis-card">
+            <div class="question">JHU Masters CS Applicants?</div>
+            <div class="answer">Answer: Count: {{ data.get('q7', 'N/A') }}</div>
+        </div>
+
+        <!-- Q8 -->
+        <div class="analysis-card">
+            <div class="question">PhD CS Acceptances 2026 (Georgetown, MIT, Stanford, CMU) - Raw Fields?</div>
+            <div class="answer">Answer: Count: {{ data.get('q8', 'N/A') }}</div>
+        </div>
+
+        <!-- Q9 -->
+        <div class="analysis-card">
+            <div class="question">PhD CS Acceptances 2026 (Georgetown, MIT, Stanford, CMU) - LLM Fields?</div>
+            <div class="answer">Answer: Count: {{ data.get('q9', 'N/A') }}</div>
+        </div>
+        
+        <!-- Custom 1 -->
+        <div class="analysis-card">
+            <div class="question">Custom: Average GRE by Degree Type?</div>
+            <div class="answer">Answer: {{ data.get('cq1', 'N/A') }}</div>
+        </div>
+        
+        <!-- Custom 2 -->
+        <div class="analysis-card">
+            <div class="question">Custom: Total Amount of Submissions</div>
+            <div class="answer">Answer: {{ data.get('cq2', 'N/A') }}</div>
+        </div>
+
+    </div>
+</body>
+</html>

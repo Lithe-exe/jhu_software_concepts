@@ -1,0 +1,21 @@
+(.venv) PS Z:\Modern Software Concepts\jhu_software_concepts\Module_4> pytest --cov-report=term-missing
+>>
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html 
+
+---------- coverage: platform win32, python 3.14.2-final-0 -----------  
+Name                             Stmts   Miss  Cover   Missing
+--------------------------------------------------------------
+src\app.py                          60      0   100%
+src\board\__init__.py                0      0   100%
+src\board\clean.py                 181      0   100%
+src\board\load_data.py              76      0   100%
+src\board\query_data.py             48      0   100%
+src\board\scrape.py                123      0   100%
+src\conftest.py                      5      0   100%
+src\test_coverage_src_extra.py      26      0   100%
+src\test_suite.py                   13      0   100%
+--------------------------------------------------------------
+TOTAL                              532      0   100%
+
+Required test coverage of 100% reached. Total coverage: 100.00%
+31 passed, 3 warnings in 0.72s

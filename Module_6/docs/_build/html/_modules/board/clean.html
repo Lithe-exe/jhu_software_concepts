@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>board.clean &#8212; Modulo_4  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for board.clean</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<div class="viewcode-block" id="DataCleaner">
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataCleaner</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_file</span><span class="o">=</span><span class="s2">&quot;raw_applicant_data.json&quot;</span><span class="p">,</span> <span class="n">output_file</span><span class="o">=</span><span class="s2">&quot;applicant_data.json&quot;</span><span class="p">):</span>
+        <span class="n">base_dir</span> <span class="o">=</span> <span class="vm">__file__</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">input_file</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">input_file</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;:&quot;</span> <span class="ow">in</span> <span class="n">input_file</span><span class="p">):</span>
+            <span class="n">input_file</span> <span class="o">=</span> <span class="n">base_dir</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">input_file</span>
+        <span class="k">if</span> <span class="n">output_file</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">output_file</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;:&quot;</span> <span class="ow">in</span> <span class="n">output_file</span><span class="p">):</span>
+            <span class="n">output_file</span> <span class="o">=</span> <span class="n">base_dir</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">..</span><span class="se">\\</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">output_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_file</span> <span class="o">=</span> <span class="n">input_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span> <span class="o">=</span> <span class="n">output_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cleaned_data</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="DataCleaner.update_and_merge">
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner.update_and_merge">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_and_merge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># 1. Load Existing Data, stops dupes &amp; merges new with old, keeping newest on top</span>
+        <span class="n">existing_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">existing_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">existing_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> existing entries from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No existing </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="si">}</span><span class="s2"> found or file empty. Starting fresh.&quot;</span><span class="p">)</span>
+            <span class="n">existing_data</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 2. Load New Raw Data, stops dupes &amp; merges new with old, keeping newest on top</span>
+        <span class="n">raw_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">raw_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> raw entries from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="si">}</span><span class="s2"> not found or empty. Aborting update.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 3. Clean the New Raw Data; process the raw list into a clean list</span>
+        <span class="n">new_cleaned_entries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clean_data</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span>
+
+        <span class="c1"># 4. Merge (Deduplication)</span>
+        <span class="c1"># Build a set of signatures from the EXISTING data to ensure we don&#39;t add duplicates.</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_norm</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">s</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">return</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_get_date</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Date of Information Added to Grad Café&quot;</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Date of Information Added to Grad CafÃ©&quot;</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Date of Information Added to Grad CafÃƒÂ©&quot;</span><span class="p">))</span>
+
+        <span class="n">existing_sigs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">existing_data</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;University&quot;</span><span class="p">)),</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Program Name&quot;</span><span class="p">)),</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">_get_date</span><span class="p">(</span><span class="n">entry</span><span class="p">)),</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Comments&quot;</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">existing_sigs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+
+        <span class="n">unique_new_entries</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">new_cleaned_entries</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;University&quot;</span><span class="p">)),</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Program Name&quot;</span><span class="p">)),</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">_get_date</span><span class="p">(</span><span class="n">item</span><span class="p">)),</span>
+                <span class="n">_norm</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Comments&quot;</span><span class="p">))</span>
+            <span class="p">)</span>
+            
+            <span class="c1"># If we haven&#39;t seen this entry in the existing file, add it</span>
+            <span class="k">if</span> <span class="n">sig</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_sigs</span><span class="p">:</span>
+                <span class="n">unique_new_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+                <span class="n">existing_sigs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span> <span class="c1"># Prevent duplicates within the new batch itself</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">unique_new_entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> new unique entries to add.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 5. Combine: Newest on top, followed by existing history</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cleaned_data</span> <span class="o">=</span> <span class="n">unique_new_entries</span> <span class="o">+</span> <span class="n">existing_data</span>
+        
+        <span class="c1"># 6. Save</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_data</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DataCleaner.clean_data">
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner.clean_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clean_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">):</span>
+        <span class="c1"># Local list to hold newly cleaned items</span>
+        <span class="n">cleaned_batch</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">raw_data</span><span class="p">:</span>
+            <span class="c1"># 1. Consolidate text for regex analysis</span>
+            <span class="n">raw_text_blob</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Decision Details&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_decision&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_comments&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Comments&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 2. Extract Status and Date</span>
+            <span class="n">status</span><span class="p">,</span> <span class="n">decision_date_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_status_date</span><span class="p">(</span><span class="n">raw_text_blob</span><span class="p">)</span>
+
+            <span class="n">formatted_date</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">decision_date_str</span><span class="p">:</span>
+                <span class="n">formatted_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_manual_format_date</span><span class="p">(</span><span class="n">decision_date_str</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">formatted_date</span><span class="p">:</span>
+                <span class="c1"># Check scraper&#39;s raw_date, then old keys</span>
+                <span class="n">raw_date</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_date&quot;</span><span class="p">)</span> <span class="ow">or</span> 
+                    <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Date of Information Added&quot;</span><span class="p">)</span> <span class="ow">or</span> 
+                    <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_date_added&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">raw_date</span><span class="p">:</span>
+                    <span class="n">formatted_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_manual_format_date</span><span class="p">(</span><span class="n">raw_date</span><span class="p">)</span>
+
+            <span class="c1"># 3. Build object. Start with direct mappings and cleaned strings.</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;Program Name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clean_str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_prog&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Program Name&quot;</span><span class="p">)),</span>
+                <span class="s2">&quot;University&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clean_str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_inst&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;University&quot;</span><span class="p">)),</span>
+                <span class="s2">&quot;Comments&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clean_str</span><span class="p">(</span>
+                    <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_comments&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Comments&quot;</span><span class="p">),</span>
+                    <span class="n">keep_empty</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;Date of Information Added to Grad Café&quot;</span><span class="p">:</span> <span class="n">formatted_date</span><span class="p">,</span>
+                <span class="s2">&quot;URL link to applicant entry&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;url&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;URL link&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;Applicant Status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+                <span class="s2">&quot;Accepted&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;Rejected&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;Semester and Year of Program Start&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_extract_season</span><span class="p">(</span><span class="n">raw_text_blob</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Season&quot;</span><span class="p">)</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;International / American Student&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_extract_origin</span><span class="p">(</span><span class="n">raw_text_blob</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;International / American Student&quot;</span><span class="p">)</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;GRE Score&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GRE Score&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;GRE V Score&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GRE V Score&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;GRE AW&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GRE AW&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;Masters or PhD&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clean_str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_degree&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Masters or PhD&quot;</span><span class="p">)),</span>
+                <span class="s2">&quot;GPA&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GPA&quot;</span><span class="p">),</span>
+                <span class="c1"># Preserve LLM fields if they happen to exist in raw (rare, but good practice)</span>
+                <span class="s2">&quot;llm_generated_program&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm_generated_program&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;llm_generated_university&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm_generated_university&quot;</span><span class="p">)</span>
+            <span class="p">}</span>
+
+            <span class="c1"># 4. Conditional fields</span>
+            <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;Accepted&quot;</span><span class="p">:</span>
+                <span class="n">obj</span><span class="p">[</span><span class="s2">&quot;Accepted&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">formatted_date</span>
+            <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;Rejected&quot;</span><span class="p">:</span>
+                <span class="n">obj</span><span class="p">[</span><span class="s2">&quot;Rejected&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">formatted_date</span>
+
+            <span class="c1"># 5. Extract stats (overwrite only if found)</span>
+            <span class="n">gpa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_gpa</span><span class="p">(</span><span class="n">raw_text_blob</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">gpa</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">obj</span><span class="p">[</span><span class="s2">&quot;GPA&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gpa</span>
+
+            <span class="n">gre</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_gre</span><span class="p">(</span><span class="n">raw_text_blob</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">gre</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">obj</span><span class="p">[</span><span class="s2">&quot;GRE Score&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gre</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">gre</span><span class="p">[</span><span class="s2">&quot;verbal&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">obj</span><span class="p">[</span><span class="s2">&quot;GRE V Score&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gre</span><span class="p">[</span><span class="s2">&quot;verbal&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">gre</span><span class="p">[</span><span class="s2">&quot;aw&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">obj</span><span class="p">[</span><span class="s2">&quot;GRE AW&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gre</span><span class="p">[</span><span class="s2">&quot;aw&quot;</span><span class="p">]</span>
+
+            <span class="c1"># 6. Remove null/empty values, but always keep Comments</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prune_nulls</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+            <span class="n">cleaned_batch</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cleaned_batch</span></div>
+
+
+    <span class="c1"># Saves cleaned data to output file</span>
+<div class="viewcode-block" id="DataCleaner.save_data">
+<a class="viewcode-back" href="../../modules.html#board.clean.DataCleaner.save_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cleaned_data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully saved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cleaned_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> cleaned entries to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error saving data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ---------- Helpers ----------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clean_str</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">keep_empty</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+       <span class="c1"># Formats strings by stripping extra whitespace &amp; handling nulls</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">keep_empty</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">keep_empty</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">s</span>
+    
+    <span class="c1"># stops null/empty strings except for comments from being in cleaned data</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prune_nulls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+       
+        <span class="n">pruned</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;Comments&quot;</span><span class="p">:</span>
+                <span class="n">pruned</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">v</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">pruned</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="n">pruned</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;Comments&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pruned</span>
+
+    <span class="c1"># Parses status and date from text blobs</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parse_status_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;Other&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;accepted&quot;</span> <span class="ow">in</span> <span class="n">t</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;Accepted&quot;</span>
+        <span class="k">elif</span> <span class="s2">&quot;rejected&quot;</span> <span class="ow">in</span> <span class="n">t</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;Rejected&quot;</span>
+        <span class="k">elif</span> <span class="s2">&quot;wait&quot;</span> <span class="ow">in</span> <span class="n">t</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;Waitlisted&quot;</span>
+        <span class="k">elif</span> <span class="s2">&quot;interview&quot;</span> <span class="ow">in</span> <span class="n">t</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;Interview&quot;</span>
+
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;on\s+(\d{1,2})\s+([A-Za-z]</span><span class="si">{3}</span><span class="s1">)&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">status</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="n">match2</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;on\s+([A-Za-z]</span><span class="si">{3}</span><span class="s1">)\s+(\d{1,2})&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">status</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">match2</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">match2</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="n">status</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="c1"># Handles various date formats manually</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_manual_format_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d_str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">d_str</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">d_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">d_str</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="n">year_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d</span><span class="si">{4}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">d_str</span><span class="p">)</span>
+        <span class="n">year</span> <span class="o">=</span> <span class="n">year_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">year_match</span> <span class="k">else</span> <span class="s2">&quot;2026&quot;</span>
+        
+        <span class="n">month_map</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;january&quot;</span><span class="p">:</span> <span class="s2">&quot;Jan&quot;</span><span class="p">,</span> <span class="s2">&quot;february&quot;</span><span class="p">:</span> <span class="s2">&quot;Feb&quot;</span><span class="p">,</span> <span class="s2">&quot;march&quot;</span><span class="p">:</span> <span class="s2">&quot;Mar&quot;</span><span class="p">,</span> <span class="s2">&quot;april&quot;</span><span class="p">:</span> <span class="s2">&quot;Apr&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;may&quot;</span><span class="p">:</span> <span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;june&quot;</span><span class="p">:</span> <span class="s2">&quot;Jun&quot;</span><span class="p">,</span> <span class="s2">&quot;july&quot;</span><span class="p">:</span> <span class="s2">&quot;Jul&quot;</span><span class="p">,</span> <span class="s2">&quot;august&quot;</span><span class="p">:</span> <span class="s2">&quot;Aug&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;september&quot;</span><span class="p">:</span> <span class="s2">&quot;Sep&quot;</span><span class="p">,</span> <span class="s2">&quot;october&quot;</span><span class="p">:</span> <span class="s2">&quot;Oct&quot;</span><span class="p">,</span> <span class="s2">&quot;november&quot;</span><span class="p">:</span> <span class="s2">&quot;Nov&quot;</span><span class="p">,</span> <span class="s2">&quot;december&quot;</span><span class="p">:</span> <span class="s2">&quot;Dec&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;jan&quot;</span><span class="p">:</span> <span class="s2">&quot;Jan&quot;</span><span class="p">,</span> <span class="s2">&quot;feb&quot;</span><span class="p">:</span> <span class="s2">&quot;Feb&quot;</span><span class="p">,</span> <span class="s2">&quot;mar&quot;</span><span class="p">:</span> <span class="s2">&quot;Mar&quot;</span><span class="p">,</span> <span class="s2">&quot;apr&quot;</span><span class="p">:</span> <span class="s2">&quot;Apr&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;jun&quot;</span><span class="p">:</span> <span class="s2">&quot;Jun&quot;</span><span class="p">,</span> <span class="s2">&quot;jul&quot;</span><span class="p">:</span> <span class="s2">&quot;Jul&quot;</span><span class="p">,</span> <span class="s2">&quot;aug&quot;</span><span class="p">:</span> <span class="s2">&quot;Aug&quot;</span><span class="p">,</span> <span class="s2">&quot;sep&quot;</span><span class="p">:</span> <span class="s2">&quot;Sep&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;oct&quot;</span><span class="p">:</span> <span class="s2">&quot;Oct&quot;</span><span class="p">,</span> <span class="s2">&quot;nov&quot;</span><span class="p">:</span> <span class="s2">&quot;Nov&quot;</span><span class="p">,</span> <span class="s2">&quot;dec&quot;</span><span class="p">:</span> <span class="s2">&quot;Dec&quot;</span>
+        <span class="p">}</span>
+
+        <span class="n">month_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;[A-Za-z]{3,}&#39;</span><span class="p">,</span> <span class="n">d_str</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">month_match</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">raw_month</span> <span class="o">=</span> <span class="n">month_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">month</span> <span class="o">=</span> <span class="n">month_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">raw_month</span><span class="p">,</span> <span class="n">raw_month</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()[:</span><span class="mi">3</span><span class="p">])</span>
+
+        <span class="n">temp_str</span> <span class="o">=</span> <span class="n">d_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">day_match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d{1,2}&#39;</span><span class="p">,</span> <span class="n">temp_str</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">day_match</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">day</span> <span class="o">=</span> <span class="n">day_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">day</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">month</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="c1"># Extracts the semester </span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_season</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(Fall|Spring|Summer|Winter)\s+\d</span><span class="si">{4}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_origin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;international&quot;</span> <span class="ow">in</span> <span class="n">t</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;International&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;american&quot;</span> <span class="ow">in</span> <span class="n">t</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;American&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_gpa</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;GPA\s*:?\s*(\d\.\d+)&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_gre</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;aw&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+
+        <span class="n">total</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_total</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bGRE\s*:?\s*(\d</span><span class="si">{3}</span><span class="s2">)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_total</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m_total</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">v</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_v</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bV\s*(\d</span><span class="si">{3}</span><span class="s2">)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_v</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m_v</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">q</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_q</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bQ\s*(\d</span><span class="si">{3}</span><span class="s2">)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_q</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m_q</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">aw</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">m_aw</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\bAW\s*([0-6](?:\.\d)?)\b&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m_aw</span><span class="p">:</span>
+            <span class="n">aw</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m_aw</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="n">total</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span> <span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;aw&quot;</span><span class="p">:</span> <span class="n">aw</span><span class="p">}</span></div>
+
+
+<span class="c1"># ---------- Execution ----------</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">cleaner</span> <span class="o">=</span> <span class="n">DataCleaner</span><span class="p">()</span>
+    <span class="c1"># Execute the update_and_merge logic instead of just cleaning</span>
+    <span class="n">cleaner</span><span class="o">.</span><span class="n">update_and_merge</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Modulo_4</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Testing Guide</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Sultan Jacobs.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
