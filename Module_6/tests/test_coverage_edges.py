@@ -25,7 +25,7 @@ def test_load_data_file_not_found_branch():
     mock_cur = MagicMock()
     mock_conn.__enter__.return_value.cursor.return_value.__enter__.return_value = mock_cur
 
-    with patch("board.load_data.psycopg.connect", return_value=mock_conn), \
+    with patch("db.load_data.psycopg.connect", return_value=mock_conn), \
          patch("builtins.open", side_effect=FileNotFoundError):
         load_data("missing.json", reset=False)
 
@@ -36,9 +36,9 @@ def test_load_data_file_not_found_branch():
 def test_get_single_result_handles_psycopg_error():
     """Validates SQL errors are converted into the expected error string."""
     analyzer = DataAnalyzer()
-    import board.query_data as qmod
+    import worker.etl.query_data as qmod
 
-    with patch("board.query_data.psycopg.connect", side_effect=qmod.psycopg.Error("down")):
+    with patch("worker.etl.query_data.psycopg.connect", side_effect=qmod.psycopg.Error("down")):
         result = analyzer._get_single_result("SELECT 1")
 
     assert "SQL Error" in result
@@ -50,7 +50,7 @@ def test_get_analysis_sets_cq1_na_on_exception():
     analyzer = DataAnalyzer()
 
     with patch.object(DataAnalyzer, "_get_single_result", return_value=1), \
-         patch("board.query_data.psycopg.connect", side_effect=Exception("db down")):
+         patch("worker.etl.query_data.psycopg.connect", side_effect=Exception("db down")):
         data = analyzer.get_analysis()
 
     assert data["cq1"] == "N/A"
@@ -60,7 +60,7 @@ def test_get_analysis_sets_cq1_na_on_exception():
 @pytest.mark.web
 def test_app_error_and_busy_paths(client):
     """Covers app route branches: query failure, busy gate, and pull-data exception."""
-    import app as app_module
+    import web.app as app_module
 
     app_module.CACHED_ANALYSIS = None
     with patch("board.query_data.DataAnalyzer.get_analysis", side_effect=Exception("boom")):
@@ -74,7 +74,7 @@ def test_app_error_and_busy_paths(client):
     finally:
         app_module.IS_BUSY = False
 
-    with patch("app.GradCafeScraper") as mock_scraper:
+    with patch("web.app.GradCafeScraper") as mock_scraper:
         mock_scraper.return_value.scrape_data.side_effect = RuntimeError("network down")
         err_res = client.post("/pull-data")
     assert err_res.status_code == 500
@@ -84,7 +84,7 @@ def test_app_error_and_busy_paths(client):
 @pytest.mark.web
 def test_update_analysis_exception_sets_empty_cache(client):
     """Covers update-analysis exception path that falls back to empty cache."""
-    import app as app_module
+    import web.app as app_module
     app_module.IS_BUSY = False
     app_module.CACHED_ANALYSIS = None
 
@@ -195,15 +195,15 @@ def test_scraper_loop_and_extract_remaining_branches():
 @pytest.mark.db
 def test_load_data_handles_psycopg_error_branch():
     """Covers load_data psycopg.Error handler branch."""
-    import board.load_data as lmod
-    with patch("board.load_data.psycopg.connect", side_effect=lmod.psycopg.Error("db")):
+    import db.load_data as lmod
+    with patch("db.load_data.psycopg.connect", side_effect=lmod.psycopg.Error("db")):
         load_data("x.json")
 
 
 @pytest.mark.db
 def test_load_data_handles_generic_error_branch():
     """Covers load_data generic exception handler branch."""
-    with patch("board.load_data.psycopg.connect", side_effect=RuntimeError("boom")):
+    with patch("db.load_data.psycopg.connect", side_effect=RuntimeError("boom")):
         load_data("x.json")
 
 

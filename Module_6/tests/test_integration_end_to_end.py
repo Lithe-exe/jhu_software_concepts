@@ -4,10 +4,10 @@ from unittest.mock import patch
 @pytest.mark.integration
 def test_end_to_end_flow(client):
     fake_raw = [{"raw_inst": "Uni", "raw_date": "1 Jan 2025"}]
-    # Patch app.* because app.py imports them
-    with patch('app.GradCafeScraper') as MockScraper, \
-         patch('app.DataCleaner') as MockCleaner, \
-         patch('board.load_data.load_data') as MockLoader:
+    # Patch web.app symbols because routes resolve module-level imports there.
+    with patch('web.app.GradCafeScraper') as MockScraper, \
+         patch('web.app.DataCleaner') as MockCleaner, \
+         patch('web.app.load_data_module.load_data') as MockLoader:
         
         MockScraper.return_value.scrape_data.return_value = fake_raw
         

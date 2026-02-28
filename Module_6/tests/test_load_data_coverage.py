@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, mock_open
-from src.board.load_data import clean_date, load_data
+from db.load_data import clean_date, load_data
 
 @pytest.mark.db
 def test_clean_date_leap_and_invalid_year():

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from src.board import load_data as load_data_module
+from db import load_data as load_data_module
 
 @pytest.mark.db
 def test_insert_on_pull():

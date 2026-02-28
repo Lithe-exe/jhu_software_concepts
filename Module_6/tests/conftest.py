@@ -19,11 +19,11 @@ sys.modules['psycopg'] = mock_psycopg
 @pytest.fixture
 def app():
     # Reset globals to ensure clean state for every test
-    import app as app_module
+    import web.app as app_module
     app_module.IS_BUSY = False
     app_module.CACHED_ANALYSIS = None
     
-    from app import create_app
+    from web.app import create_app
     app_instance = create_app({'TESTING': True})
     yield app_instance
 

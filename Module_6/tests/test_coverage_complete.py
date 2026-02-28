@@ -64,7 +64,7 @@ def test_loader_script_execution():
         
         mock_cursor = mock_conn.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
         
-        runpy.run_module('board.load_data', run_name='__main__')
+        runpy.run_module('db.load_data', run_name='__main__')
         
         # Verify execute was called (proof the loop ran)
         assert mock_cursor.execute.called
@@ -74,12 +74,12 @@ def test_loader_script_execution():
 def test_app_script_execution():
     # runpy executes app.py as __main__, so patch Flask.run globally to avoid blocking.
     with patch("flask.app.Flask.run", return_value=None):
-        runpy.run_module('app', run_name='__main__')
+        runpy.run_module('web.app', run_name='__main__')
 
 @pytest.mark.web
 def test_app_caching_logic(client):
     """Test analysis caching logic via the route."""
-    import app as app_module
+    import web.app as app_module
     app_module.CACHED_ANALYSIS = None
 
     with patch("board.query_data.DataAnalyzer.get_analysis", return_value={"q1": 100}) as mock_query:

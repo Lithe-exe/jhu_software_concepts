@@ -1,5 +1,5 @@
 import pytest
-import app as app_module # Correct import
+import web.app as app_module # Correct import
 
 @pytest.mark.buttons
 def test_busy_gating_update_analysis(client):

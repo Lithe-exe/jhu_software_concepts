@@ -1,0 +1,4 @@
+psycopg[binary]
+pika
+beautifulsoup4
+urllib3

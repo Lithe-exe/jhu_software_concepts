@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gradcafe_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: src/web/Dockerfile
+    environment:
+      FLASK_APP: src/web/run.py
+      FLASK_DEBUG: 1
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/%2F"
+      DATABASE_URL: "postgresql://postgres:password@db:5432/gradcafe_db"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src # Sync code changes for dev
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/worker/Dockerfile
+    environment:
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/%2F"
+      DATABASE_URL: "postgresql://postgres:password@db:5432/gradcafe_db"
+      SEED_JSON_PATH: "/app/db/applicant_data.json"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./db:/app/db:ro
+      # Mount data read-only as per instructions (Worker writes to DB, reads seed if needed)
+      - ./src/data:/app/src/data:ro
+
+volumes:
+  pgdata:

@@ -2,8 +2,8 @@
 
 from unittest.mock import patch
 
-from board.clean import DataCleaner
-from board.query_data import DataAnalyzer
+from worker.etl.clean import DataCleaner
+from worker.etl.query_data import DataAnalyzer
 
 
 def test_cleaner_uncovered_branches():
@@ -49,7 +49,7 @@ def test_query_data_cq1_empty_branch():
     analyzer = DataAnalyzer()
 
     with patch.object(DataAnalyzer, "_get_single_result", return_value="N/A"), patch(
-        "board.query_data.psycopg.connect", return_value=_FakeConn()
+        "worker.etl.query_data.psycopg.connect", return_value=_FakeConn()
     ):
         data = analyzer.get_analysis(limit=10)
 
